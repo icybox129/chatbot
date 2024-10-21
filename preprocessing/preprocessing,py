@@ -13,8 +13,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-api_key = os.getenv("OPENAI_API_KEY")
-
 # Paths
 CHROMA_PATH = "chroma"
 DATA_PATH = "data"
@@ -23,12 +21,18 @@ logging.basicConfig(level=logging.INFO, filename='app.log', filemode='w')
 
 # Markdown Text Splitter
 class MarkdownSplitter(TextSplitter):
+    def split_text(self, text: str):
+        # Wrap the text in a Document object and reuse split_documents method
+        document = Document(page_content=text, metadata={})
+        documents = [document]
+        return self.split_documents(documents)
+
     def split_documents(self, documents: list[Document]):
         chunks = []
         for doc in documents:
             content = doc.page_content
 
-            # Split based on Markdown headings (e.g.. #, ##, ###)
+            # Split based on Markdown headings (e.g., #, ##, ###)
             sections = re.split(r'(\n#{1,6} .*)', content)
 
             for i in range(1, len(sections), 2):
@@ -44,7 +48,7 @@ class MarkdownSplitter(TextSplitter):
                     chunks.append(Document(page_content=chunk, metadata=chunk_metadata))
         
         return chunks
-    
+
     def split_by_code_blocks(self, text: str):
         # Regex to match code blocks like ```terraform or other generic code blocks
         code_block_pattern = r'(```[\w]*[\s\S]*?```|`[^`\n]+`)'
@@ -59,11 +63,10 @@ class MarkdownSplitter(TextSplitter):
                 if current_chunk:
                     chunks.append(current_chunk.strip())
                     current_chunk = ""
-                chunks.append(part.strip()) # Keep code block intact
+                chunks.append(part.strip())  # Keep code block intact
             else:
                 current_chunk += part
-                # If the current chunk is getting too long, split it
-                if len(current_chunk) > self.chunk_size:
+                if len(current_chunk) > self._chunk_size:  # Access inherited chunk size
                     chunks.append(current_chunk.strip())
                     current_chunk = ""
         
@@ -74,15 +77,29 @@ class MarkdownSplitter(TextSplitter):
 
 # Function to extract metadata from YAML frontmatter
 def extract_metadata(content):
-    # Check if the document has frontmatter and parse it
     if content.startswith("---"):
         frontmatter_end = content.find("---", 3)
         if frontmatter_end != -1:
             frontmatter = content[3:frontmatter_end].strip()
-            metadata = yaml.safe_load(frontmatter)
-            content = content[frontmatter_end + 3:].strip() # Remaining content
+            logging.info(f"Extracted frontmatter: {frontmatter}")
+
+            # Format the frontmatter
+            pairs = re.findall(r'(\w+):\s*("[^"]*"|\|[-\s]*\w+.*?)(?=\s+\w+:|$)', frontmatter)
+            formatted_lines = []
+            for key, value in pairs:
+                if value.startswith('|'):
+                    formatted_lines.append(f"{key}: |")
+                    for line in value.strip().split('\n'):
+                        formatted_lines.append(f"  {line.strip()}")
+                else:
+                    formatted_lines.append(f"{key}: {value}")
+
+            formatted_frontmatter = "\n".join(formatted_lines)
+            metadata = yaml.safe_load(formatted_frontmatter)
+            content = content[frontmatter_end + 3:].strip()  # Clean remaining content
             return metadata, content
-    return {}, content
+    logging.error("No valid YAML frontmatter found.")
+    return {}, content  # Return empty metadata if there's an error
 
 # Function to load and process markdown documents
 def load_documents():
@@ -90,11 +107,13 @@ def load_documents():
         loader = DirectoryLoader(DATA_PATH, glob=["*.md", "*.markdown"])
         raw_documents = loader.load()
         documents = []
-        
+
         for doc in raw_documents:
             metadata, content = extract_metadata(doc.page_content)
             documents.append(Document(page_content=content, metadata=metadata))
-        logging.info(f"Loaded {len(documents)} documents from {DATA_PATH}")
+        
+        num_loaded = len(documents)
+        logging.info(f"Loaded {num_loaded} documents from {DATA_PATH}")
         return documents
     except Exception as e:
         logging.error(f"Error loading documents: {e}")
@@ -112,16 +131,13 @@ def split_text(documents: list[Document]):
 
 # Function to save chunks into Chroma vector store
 def save_to_chroma(chunks: list[Document]):
-    # Delete the previous Chroma database (if it exists)
     if os.path.exists(CHROMA_PATH):
         shutil.rmtree(CHROMA_PATH)
         logging.info(f"Deleted existing Chroma database at {CHROMA_PATH}")
 
-    # Create a new Chroma vector store
     try:
         embeddings = OpenAIEmbeddings(model="text-embedding-ada-002")
         db = Chroma.from_documents(chunks, embeddings, persist_directory=CHROMA_PATH)
-        db.persist()
         logging.info(f"Saved {len(chunks)} chunks to Chroma database at {CHROMA_PATH}")
     except Exception as e:
         logging.error(f"Error saving to Chroma: {e}")
