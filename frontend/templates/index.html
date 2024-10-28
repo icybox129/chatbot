@@ -1,1 +1,20 @@
 <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test</title>
+</head>
+<body>
+    <h2>Terraform Assistant</h2>
+    <label for="query">Enter your question:</label>
+    <input type="text" id="query" name="query" required>
+    
+    <label for="use_knowledge_base">Use Knowledge Base</label>
+    
+    <button onclick="submitQuery()">Submit</button>
+    
+    <div id="response"></div>
+
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
+</body>
+</html>

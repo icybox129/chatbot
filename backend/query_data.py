@@ -42,7 +42,13 @@ def main():
         logging.error(f"Chroma directory does not exist: {CHROMA_PATH}")
         return  # Exit the function if the directory doesn't exist
 
-    query_text = "Can you create me an EC2 instance"
+    # # Create CLI
+    # parser = argparse.ArgumentParser()
+    # parser.add_argument("query_text", type=str, help="The query text")
+    # args = parser.parse_args()
+    # query_text = args.query_text
+
+    query_text = "What is the capital of France?"
 
     try:
         # Prepare the DB
@@ -60,38 +66,33 @@ def main():
         results = db.similarity_search_with_relevance_scores(query_text, k=3)
         logging.info(f"Query '{query_text}' returned {len(results)} results.")
 
+        if len(results) == 0 or results[0][1] < 0.7:
+            logging.warning("No relevant results found for the query.")
+            print("No relevant results found")
+            return
+        
+        # Log the results for debugging
         context_text = ""
         sources = []
-        relevant_results = [result for result in results if result[1] >= 0.7]
-
-        if relevant_results:
-            # If relevant documents are found, use them to answer the question
-            for document, score in relevant_results:
-                logging.info(f"Document content: {document.page_content}, Score: {score}")
-                logging.info(f"Document metadata: {document.metadata}")
-
-                context_text += document.page_content + "\n\n---\n\n"
-                source = get_source_from_metadata(document.metadata)
-                if source not in sources:
-                    sources.append(source)
-
-            prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
-            prompt = prompt_template.format(context=context_text, question=query_text)
+        for document, score in results:
+            logging.info(f"Document content: {document.page_content}, Score: {score}")
+            logging.info(f"Document metadata: {document.metadata}")
             
-            logging.info("Generated prompt for model: %s", prompt)
-            model = ChatOpenAI()
-            response = model.invoke([HumanMessage(content=prompt)])
-            response_text = response.content
-            formatted_response = f"Response: {response_text}\n\nSources:\n" + "\n".join(f"- {source}" for source in sources)
-        
-        else:
-            # Fallback to general model for answering the question without context
-            logging.warning("No relevant results found, using general knowledge model.")
-            model = ChatOpenAI()
-            response = model.invoke([HumanMessage(content=query_text)])
-            response_text = response.content
-            formatted_response = f"Response: {response_text}\n\nSources: General knowledge"
+            context_text += document.page_content + "\n\n---\n\n"
+            source = get_source_from_metadata(document.metadata)
+            if source not in sources:
+                sources.append(source)
 
+        prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
+        prompt = prompt_template.format(context=context_text, question=query_text)
+
+        logging.info("Generated prompt for model: %s", prompt)
+
+        model = ChatOpenAI()
+        response = model.invoke([HumanMessage(content=prompt)])
+        response_text = response.content
+
+        formatted_response = f"Response: {response_text}\n\nSources:\n" + "\n".join(f"- {source}" for source in sources)
         print(formatted_response)
 
     except Exception as e:

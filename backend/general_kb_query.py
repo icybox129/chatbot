@@ -13,7 +13,8 @@ load_dotenv()
 CHROMA_PATH = "chroma"
 
 PROMPT_TEMPLATE = """
-Answer the question based only on the following context:
+You are a specialized assistant that helps developers create and troubleshoot Terraform configuration files.
+Use only the following context to answer the question:
 
 {context}
 
@@ -41,7 +42,7 @@ def main():
         logging.error(f"Chroma directory does not exist: {CHROMA_PATH}")
         return  # Exit the function if the directory doesn't exist
 
-    query_text = "What is the capital of France?"
+    query_text = "What ist he capital of France?"
 
     try:
         # Prepare the DB
