@@ -1,9 +1,7 @@
-import argparse
 import logging
 import os
 from langchain_chroma import Chroma
-from langchain_openai import OpenAIEmbeddings
-from langchain_openai import ChatOpenAI
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema import HumanMessage
 from dotenv import load_dotenv
@@ -33,22 +31,14 @@ def get_source_from_metadata(metadata):
     else:
         return "Unknown source"
 
-def main():
+def main(query_text):
     # Set up logging
     logging.basicConfig(level=logging.INFO, filename='./backend/backend.log', filemode='w')
 
     # Check if the Chroma directory exists
     if not os.path.exists(CHROMA_PATH):
         logging.error(f"Chroma directory does not exist: {CHROMA_PATH}")
-        return  # Exit the function if the directory doesn't exist
-
-    # # Create CLI
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("query_text", type=str, help="The query text")
-    # args = parser.parse_args()
-    # query_text = args.query_text
-
-    query_text = "What is the capital of France?"
+        return "Error: Knowledge base not found."
 
     try:
         # Prepare the DB
@@ -58,26 +48,19 @@ def main():
         # Log database connectivity
         logging.info("Successfully connected to Chroma database.")
 
-        # Check the number of documents in the database
-        total_docs = len(db.get()['ids'])  # Use get() method to retrieve all documents
-        logging.info(f"Total documents in database: {total_docs}")
-
         # Search the DB
         results = db.similarity_search_with_relevance_scores(query_text, k=3)
         logging.info(f"Query '{query_text}' returned {len(results)} results.")
 
         if len(results) == 0 or results[0][1] < 0.7:
             logging.warning("No relevant results found for the query.")
-            print("No relevant results found")
-            return
-        
+            return "No relevant results found"
+
         # Log the results for debugging
         context_text = ""
         sources = []
         for document, score in results:
             logging.info(f"Document content: {document.page_content}, Score: {score}")
-            logging.info(f"Document metadata: {document.metadata}")
-            
             context_text += document.page_content + "\n\n---\n\n"
             source = get_source_from_metadata(document.metadata)
             if source not in sources:
@@ -92,11 +75,9 @@ def main():
         response = model.invoke([HumanMessage(content=prompt)])
         response_text = response.content
 
-        formatted_response = f"Response: {response_text}\n\nSources:\n" + "\n".join(f"- {source}" for source in sources)
-        print(formatted_response)
+        formatted_response = f"{response_text}\n\nSources:\n" + "\n".join(f"- {source}" for source in sources)
+        return formatted_response
 
     except Exception as e:
         logging.error(f"An error occurred: {e}", exc_info=True)
-
-if __name__ == "__main__":
-    main()
+        return "An error occurred while processing your request."
