@@ -2,17 +2,38 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Test</title>
+    <title>Terraform Assistant</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.3.1/styles/github-dark.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    
 </head>
 <body>
-    <h2>Chatbot</h2>
-    <label for="query">Enter your question:</label>
-    <input type="text" id="query" name="query" required>
     
-    <button onclick="submitQuery()">Submit</button>
-    
-    <div id="response"></div>
+    <div class="chat-container">
+        <!-- Sidebar for previous activities -->
+        <div class="sidebar">
+            <h1>Terraform <span>Chatbot</span></h1>
+            <button class="new-conversation-btn">NEW CONVERSATION</button>
+            <div class="previous-activities">
+                <h2>Previous</h2>
+            </div>
+        </div>
+
+        <!-- Chat area -->
+        <div class="chat-area">
+            <div class="chat-header">Conversation</div>
+            <div id="chat-window" class="chat-window">
+                <!-- Messages will appear here -->
+            </div>
+            <div class="message-input">
+                <input type="text" id="query" placeholder="Write your message here..." required>
+                <button onclick="submitQuery()">Send</button>
+            </div>
+        </div>
+    </div>
 
     <script src="{{ url_for('static', filename='main.js') }}"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.12/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.3.1/highlight.min.js"></script>
 </body>
 </html>

@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-CHROMA_PATH = "chroma"
+CHROMA_PATH = "data/chroma"
 
 PROMPT_TEMPLATE = """
 You are a specialized assistant that helps developers create and troubleshoot Terraform configuration files.
