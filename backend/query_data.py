@@ -1,16 +1,14 @@
-import argparse
 import logging
 import os
 from langchain_chroma import Chroma
-from langchain_openai import OpenAIEmbeddings
-from langchain_openai import ChatOpenAI
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain.prompts import ChatPromptTemplate
 from langchain.schema import HumanMessage
 from dotenv import load_dotenv
 
 load_dotenv()
 
-CHROMA_PATH = "chroma"
+CHROMA_PATH = "data/chroma"
 
 PROMPT_TEMPLATE = """
 You are a specialized assistant that helps developers create and troubleshoot Terraform configuration files.
@@ -33,16 +31,14 @@ def get_source_from_metadata(metadata):
     else:
         return "Unknown source"
 
-def main():
+def main(query_text):
     # Set up logging
     logging.basicConfig(level=logging.INFO, filename='./backend/backend.log', filemode='w')
 
     # Check if the Chroma directory exists
     if not os.path.exists(CHROMA_PATH):
         logging.error(f"Chroma directory does not exist: {CHROMA_PATH}")
-        return  # Exit the function if the directory doesn't exist
-
-    query_text = "Can you create me an EC2 instance"
+        return "Error: Knowledge base not found."
 
     try:
         # Prepare the DB
@@ -52,50 +48,36 @@ def main():
         # Log database connectivity
         logging.info("Successfully connected to Chroma database.")
 
-        # Check the number of documents in the database
-        total_docs = len(db.get()['ids'])  # Use get() method to retrieve all documents
-        logging.info(f"Total documents in database: {total_docs}")
-
         # Search the DB
         results = db.similarity_search_with_relevance_scores(query_text, k=3)
         logging.info(f"Query '{query_text}' returned {len(results)} results.")
 
+        if len(results) == 0 or results[0][1] < 0.7:
+            logging.warning("No relevant results found for the query.")
+            return "No relevant results found"
+
+        # Log the results for debugging
         context_text = ""
         sources = []
-        relevant_results = [result for result in results if result[1] >= 0.7]
+        for document, score in results:
+            logging.info(f"Document content: {document.page_content}, Score: {score}")
+            context_text += document.page_content + "\n\n---\n\n"
+            source = get_source_from_metadata(document.metadata)
+            if source not in sources:
+                sources.append(source)
 
-        if relevant_results:
-            # If relevant documents are found, use them to answer the question
-            for document, score in relevant_results:
-                logging.info(f"Document content: {document.page_content}, Score: {score}")
-                logging.info(f"Document metadata: {document.metadata}")
+        prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
+        prompt = prompt_template.format(context=context_text, question=query_text)
 
-                context_text += document.page_content + "\n\n---\n\n"
-                source = get_source_from_metadata(document.metadata)
-                if source not in sources:
-                    sources.append(source)
+        logging.info("Generated prompt for model: %s", prompt)
 
-            prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
-            prompt = prompt_template.format(context=context_text, question=query_text)
-            
-            logging.info("Generated prompt for model: %s", prompt)
-            model = ChatOpenAI()
-            response = model.invoke([HumanMessage(content=prompt)])
-            response_text = response.content
-            formatted_response = f"Response: {response_text}\n\nSources:\n" + "\n".join(f"- {source}" for source in sources)
-        
-        else:
-            # Fallback to general model for answering the question without context
-            logging.warning("No relevant results found, using general knowledge model.")
-            model = ChatOpenAI()
-            response = model.invoke([HumanMessage(content=query_text)])
-            response_text = response.content
-            formatted_response = f"Response: {response_text}\n\nSources: General knowledge"
+        model = ChatOpenAI()
+        response = model.invoke([HumanMessage(content=prompt)])
+        response_text = response.content
 
-        print(formatted_response)
+        formatted_response = f"{response_text}\n\nSources:\n" + "\n".join(f"- {source}" for source in sources)
+        return formatted_response
 
     except Exception as e:
         logging.error(f"An error occurred: {e}", exc_info=True)
-
-if __name__ == "__main__":
-    main()
+        return "An error occurred while processing your request."

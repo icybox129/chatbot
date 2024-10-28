@@ -14,8 +14,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Paths
-CHROMA_PATH = "chroma"
-DATA_PATH = "data"
+CHROMA_PATH = "data/chroma"
+DATA_PATH = "data/raw"
 
 logging.basicConfig(level=logging.INFO, filename='app.log', filemode='w')
 

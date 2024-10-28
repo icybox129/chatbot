@@ -16,6 +16,7 @@ venv/
 .venv/
 
 chroma/
+*.sqlite3
 
 # Ignore environment variable files
 .env
@@ -43,6 +44,7 @@ Thumbs.db
 # Ignore compiled Python files (for Python projects)
 __pycache__/
 *.py[cod]
+*.pyc
 
 # Ignore Java compiled files (for Java projects)
 *.class
