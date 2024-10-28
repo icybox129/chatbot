@@ -16,6 +16,7 @@ venv/
 .venv/
 
 chroma/
+*.sqlite3
 
 # Ignore environment variable files
 .env
