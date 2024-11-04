@@ -85,3 +85,8 @@ function submitQuery() {
         chatWindow.scrollTop = chatWindow.scrollHeight;
     }, 100);
 }
+
+// Add the redirectToHomepage function here
+function redirectToHomepage() {
+    window.location.href = '/';
+}

@@ -126,6 +126,7 @@ body, html {
 }
 
 .chat-window {
+    /* max-width: 1200px; */
     flex-grow: 1;
     padding: 20px;
     overflow-y: auto;

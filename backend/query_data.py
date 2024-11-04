@@ -54,7 +54,7 @@ def main(query_text):
 
         if len(results) == 0 or results[0][1] < 0.7:
             logging.warning("No relevant results found for the query.")
-            return "No relevant results found"
+            return "I am only a specialized assistant for Terraform configuration files. I am unable to answer your question."
 
         # Log the results for debugging
         context_text = ""
