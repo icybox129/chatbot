@@ -15,8 +15,16 @@ build/
 venv/
 .venv/
 
-chroma/
-*.sqlite3
+# Ignore Terraform directories and files
+.terraform/                   # Terraform working directory
+*.tfstate                     # State files
+*.tfstate.backup              # Backup state files
+*.tfvars                      # Variable definitions (may contain secrets)
+crash.log                     # Crash log files
+crash.*.log                   # Crash log files with timestamps
+*.tfplan                      # Terraform plan output files
+*.tfpreview                   # Terraform plan preview files
+.override                     # Override files
 
 # Ignore environment variable files
 .env
@@ -61,7 +69,11 @@ coverage/
 # Ignore other system files
 *.iml
 *.out
-*.log
 *.bak
 *.sql
 *.sqlite
+*.ssh
+
+# Ignore Chroma and SQLite files
+chroma/
+*.sqlite3
