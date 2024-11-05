@@ -101,6 +101,7 @@ coverage/
 *.sql
 *.sqlite
 *.ssh
+*.pem
 
 # Ignore Chroma and SQLite files
 chroma/
