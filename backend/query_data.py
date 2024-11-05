@@ -66,29 +66,22 @@ def main(query_text, history):
         results = db.similarity_search_with_relevance_scores(query_text, k=3)
         logging.info(f"Query '{query_text}' returned {len(results)} results.")
 
-        if len(results) == 0 or results[0][1] < 0.7:
-            logging.warning("No relevant results found for the query.")
-            return "I am only a specialized assistant for Terraform configuration files. I am unable to answer your question."
-
-        # Log the results for debugging
+        # Initialize context and sources
         context_text = ""
         sources = []
-        for document, score in results:
-            logging.info(f"Document content: {document.page_content}, Score: {score}")
-            context_text += document.page_content + "\n\n---\n\n"
-            source = get_source_from_metadata(document.metadata)
-            if source not in sources:
-                sources.append(source)
+
+        if len(results) == 0 or results[0][1] < 0.7:
+            logging.warning("No relevant results found for the query.")
+            # context_text and sources remain empty
+        else:
+            for document, score in results:
+                logging.info(f"Document content: {document.page_content}, Score: {score}")
+                context_text += document.page_content + "\n\n---\n\n"
+                source = get_source_from_metadata(document.metadata)
+                if source not in sources:
+                    sources.append(source)
 
         messages = []
-
-        # # Add system prompt with context
-        # system_message = SystemMessage(content=(
-        #     "You are a specialized assistant that helps developers create and troubleshoot Terraform configuration files."
-        #     " Use only the following context to answer the question:\n\n"
-        #     f"{context_text}"
-        # ))
-        # messages.append(system_message)
 
         # Add system prompt with context and policies
         system_message = SystemMessage(content=(
@@ -100,17 +93,9 @@ def main(query_text, history):
             "- Use bullet points for lists and triple backticks for code blocks.\n"
             "- When applicable, reference the sources from the context in your response.\n"
             "- Do not provide information outside of Terraform configuration files.\n"
-            # "- Adhere to the OpenAI policies below. Do not provide disallowed content. If unsure, refrain from providing the content.\n\n"
-            # "Context:\n"
             f"{context_text}\n\n"
-            # "OpenAI Policies:\n"
-            # "1. **Disallowed Content**: Do not provide illegal, unethical, or harmful content.\n"
-            # "2. **Privacy**: Do not share personal or sensitive information.\n"
-            # "3. **Accuracy**: Ensure all information is accurate and based on the context.\n"
-            # "[Add other relevant policies as needed.]"
         ))
         messages.append(system_message)
-
 
         # Append the conversation history
         for msg in history:
@@ -118,7 +103,7 @@ def main(query_text, history):
                 messages.append(HumanMessage(content=msg['content']))
             elif msg['role'] == 'assistant':
                 messages.append(AIMessage(content=msg['content']))
-        
+
         # Truncate history to fit within the token limit
         messages = truncate_history(messages)
 
@@ -127,16 +112,12 @@ def main(query_text, history):
         response = model.invoke(messages)
         response_text = response.content
 
-        # prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
-        # prompt = prompt_template.format(context=context_text, question=query_text)
+        # Conditionally format the response based on the presence of sources
+        if sources:
+            formatted_response = f"{response_text}\n\nSources:\n" + "\n".join(f"- {source}" for source in sources)
+        else:
+            formatted_response = response_text
 
-        # logging.info("Generated prompt for model: %s", prompt)
-
-        # model = ChatOpenAI()
-        # response = model.invoke([HumanMessage(content=prompt)])
-        # response_text = response.content
-
-        formatted_response = f"{response_text}\n\nSources:\n" + "\n".join(f"- {source}" for source in sources)
         return formatted_response
 
     except Exception as e:
