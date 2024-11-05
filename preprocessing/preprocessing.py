@@ -19,7 +19,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))  # One level up from 'prep
 DATA_PATH = os.path.join(BASE_DIR, "data/raw")
 CHROMA_PATH = os.path.join(BASE_DIR, "data/chroma")
 
-logging.basicConfig(level=logging.INFO, filename='app.log', filemode='w')
+logging.basicConfig(level=logging.INFO, filename=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'app.log'), filemode='w')
 
 # Markdown Text Splitter
 class MarkdownSplitter(TextSplitter):
