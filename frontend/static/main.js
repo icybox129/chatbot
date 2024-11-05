@@ -86,7 +86,14 @@ function submitQuery() {
     }, 100);
 }
 
-// Add the redirectToHomepage function here
 function redirectToHomepage() {
-    window.location.href = '/';
+    fetch('/new_conversation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(() => {
+        // Clear the chat window
+        const chatWindow = document.getElementById('chat-window');
+        chatWindow.innerHTML = '';
+    })
 }
