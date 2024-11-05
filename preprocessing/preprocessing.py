@@ -14,8 +14,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Paths
-CHROMA_PATH = "data/chroma"
-DATA_PATH = "data/raw"
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))  # One level up from 'preprocessing'
+
+DATA_PATH = os.path.join(BASE_DIR, "data/raw")
+CHROMA_PATH = os.path.join(BASE_DIR, "data/chroma")
 
 logging.basicConfig(level=logging.INFO, filename='app.log', filemode='w')
 
