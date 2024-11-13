@@ -1,10 +1,16 @@
-// Listen for the Enter key to submit the message
-document.getElementById('query').addEventListener('keydown', function(event) {
-    if (event.key === 'Enter') {
-        event.preventDefault();
-        submitQuery();
+document.addEventListener('DOMContentLoaded', () => {
+    if (typeof hljs !== 'undefined') {
+        // Register 'terraform' as an alias for 'hcl'
+        hljs.registerAliases('terraform', { languageName: 'hcl' });
+        hljs.highlightAll();
+    } else {
+        console.error('Highlight.js is not defined.');
     }
 });
+
+function handleEnter(event) {
+    if (event.key === 'Enter') sendMessage();
+}
 
 function sanitizeHtml(str) {
     const temp = document.createElement('div');
@@ -12,47 +18,49 @@ function sanitizeHtml(str) {
     return temp.innerHTML;
 }
 
-function renderCodeBlock(language, code) {
-    return `<pre><code class="language-${sanitizeHtml(language)}">${sanitizeHtml(code)}</code></pre>`;
-}
-
 function renderResponse(text) {
-    // Handle responses with code blocks
-    if (text.includes('```')) {
-        text = text.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, language, code) => {
-            return renderCodeBlock(language || '', code.trim());
-        });
-    }
-
-    // Replace newline characters with <br> tags
-    const htmlText = text.replace(/\n/g, '<br>');
-
-    return htmlText;
+    // Regex to match code blocks with or without language specifier
+    return text.replace(/```(\w+)?\s*[\n\r]+([\s\S]*?)```/g, (match, language, code) => {
+        return renderCodeBlock(language || 'plaintext', code.trim());
+    });
 }
 
-function submitQuery() {
-    const query = document.getElementById('query').value;
-    if (!query) return;
+function renderCodeBlock(language, code) {
+    const normalizedLanguage = language.toLowerCase() === 'terraform' ? 'hcl' : language.toLowerCase();
+    return `<pre><code class="language-${sanitizeHtml(normalizedLanguage)}">${sanitizeHtml(code)}</code></pre>`;
+}
 
+
+// Dynamically add user and bot messages
+function sendMessage() {
+    const userInput = document.getElementById('user-input');
     const chatWindow = document.getElementById('chat-window');
+    const message = userInput.value.trim();
+
+    if (!message) return; // Do nothing if the input is empty
+
+    // Add user message to the chat window
     const userMessage = document.createElement('div');
-    userMessage.classList.add('message', 'user-message');
-    userMessage.textContent = query;
+    userMessage.className = 'message user-message';
+    userMessage.textContent = message;
     chatWindow.appendChild(userMessage);
 
-    document.getElementById('query').value = '';
+    userInput.value = ''; // Clear the input box
+    chatWindow.scrollTop = chatWindow.scrollHeight; // Scroll to the bottom
 
+    // Display bot typing indicator
     const botMessage = document.createElement('div');
-    botMessage.classList.add('message', 'bot-message');
-    botMessage.textContent = 'Loading...';
+    botMessage.className = 'message bot-message';
+    botMessage.textContent = 'Typing...';
     chatWindow.appendChild(botMessage);
 
-    chatWindow.scrollTop = chatWindow.scrollHeight;
+    chatWindow.scrollTop = chatWindow.scrollHeight; // Ensure the latest message is visible
 
+    // Send the query to the backend
     fetch('/api/query', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query })
+        body: JSON.stringify({ query: message })
     })
     .then(response => {
         if (!response.ok) {
@@ -61,41 +69,63 @@ function submitQuery() {
         return response.json();
     })
     .then(data => {
-        if (!data || !data.response) {
-            throw new Error('Invalid response format');
-        }
-
-        try {
-            const formattedResponse = renderResponse(data.response);
-            botMessage.innerHTML = formattedResponse;
-
-            // Apply syntax highlighting
-            botMessage.querySelectorAll('pre code').forEach(block => {
-                hljs.highlightElement(block);
-            });
-        } catch (error) {
-            console.error('Error rendering response:', error);
-            botMessage.textContent = data.response; // Fallback to plain text
-        }
+        const formattedResponse = renderResponse(data.response);
+        botMessage.innerHTML = formattedResponse;
+    
+        // Apply syntax highlighting to the new content
+        Prism.highlightAllUnder(botMessage);
+    
+        // Enable code copying for all code blocks
+        enableCodeCopying();
+    
+        // Scroll to the bottom after rendering the response
+        chatWindow.scrollTop = chatWindow.scrollHeight;
     })
     .catch(error => {
         console.error('Error in fetch operation:', error);
         botMessage.textContent = `Error: ${error.message || 'Unable to fetch response'}`;
     });
-
-    setTimeout(() => {
-        chatWindow.scrollTop = chatWindow.scrollHeight;
-    }, 100);
 }
 
-function redirectToHomepage() {
+function startNewConversation() {
+    document.getElementById('chat-window').innerHTML = '';
     fetch('/new_conversation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
-    })
-    .then(() => {
-        // Clear the chat window
-        const chatWindow = document.getElementById('chat-window');
-        chatWindow.innerHTML = '';
-    })
+    });
 }
+
+function enableCodeCopying() {
+    // Select all code blocks in the chat window
+    const codeBlocks = document.querySelectorAll('.chat-window pre');
+
+    codeBlocks.forEach(block => {
+        // Skip if the copy button already exists
+        if (block.querySelector('.copy-button')) return;
+
+        // Create the copy button
+        const copyButton = document.createElement('button');
+        copyButton.className = 'copy-button';
+        copyButton.textContent = 'Copy';
+
+        // Add click event to copy only the code text
+        copyButton.addEventListener('click', () => {
+            const codeElement = block.querySelector('code'); // Get the <code> inside the <pre>
+            const codeText = codeElement ? codeElement.innerText : ''; // Extract only the code text
+
+            navigator.clipboard.writeText(codeText).then(() => {
+                copyButton.textContent = 'Copied!'; // Temporary success message
+                setTimeout(() => (copyButton.textContent = 'Copy'), 2000); // Reset button text
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+            });
+        });
+
+        // Add the button to the code block
+        block.appendChild(copyButton);
+    });
+}
+
+
+console.log('Available languages:', hljs.listLanguages());
+

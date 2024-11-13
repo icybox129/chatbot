@@ -2,38 +2,47 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Terraform Assistant</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.3.1/styles/github-dark.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Assistant</title>
+    <!-- Prism CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+
+    <!-- Prism JS Core -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+
+    <!-- Prism HCL Language Component -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-hcl.min.js"></script>
+
+    <!-- Your Main JavaScript File -->
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
     
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-    
     <div class="chat-container">
-        <!-- Sidebar for previous activities -->
+        <!-- Sidebar -->
         <div class="sidebar">
-            <h1>JD <span>Chatbot</span></h1>
-            <button class="new-conversation-btn" onclick="redirectToHomepage()">NEW CONVERSATION</button>
-            <div class="previous-activities">
-                <h2>Previous</h2>
+            <h1>Chatbot</h1>
+            <button class="new-conversation-btn" onclick="startNewConversation()">+ New Chat</button>
+            <div class="previous-chats">
+                <h2>History</h2>
+                <!-- Chat history dynamically populated -->
             </div>
         </div>
 
-        <!-- Chat area -->
-        <div class="chat-area">
-            <div class="chat-header">Conversation</div>
-            <div id="chat-window" class="chat-window">
-                <!-- Messages will appear here -->
+        <!-- Main Chat Area -->
+        <div class="main-area">
+            <div class="chat-window" id="chat-window">
+                <!-- Messages dynamically populated -->
             </div>
-            <div class="message-input">
-                <input type="text" id="query" placeholder="Write your message here..." required>
-                <button onclick="submitQuery()">Send</button>
+            <div class="chat-input">
+                <input type="text" id="user-input" placeholder="Send a message..." onkeydown="handleEnter(event)">
+                <button onclick="sendMessage()">➤</button>
             </div>
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='main.js') }}"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.12/marked.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.3.1/highlight.min.js"></script>
+    <!-- Your Main JavaScript File -->
+    <!-- <script src="{{ url_for('static', filename='main.js') }}"></script> -->
 </body>
 </html>

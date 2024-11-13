@@ -90,11 +90,12 @@ def main(query_text, history):
             "- Use **only** the following provided context to answer the user's question.\n"
             "- If the answer is not contained within the context, politely inform the user that you cannot assist with that request.\n"
             "- Provide clear and concise explanations in markdown format.\n"
-            "- Use bullet points for lists and triple backticks for code blocks.\n"
+            "- Use bullet points for lists and triple backticks for code blocks, specifying 'hcl' as the language (e.g., ```hcl).\n"
             "- When applicable, reference the sources from the context in your response.\n"
             "- Do not provide information outside of Terraform configuration files.\n"
             f"{context_text}\n\n"
         ))
+
         messages.append(system_message)
 
         # Append the conversation history
