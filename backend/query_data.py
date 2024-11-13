@@ -1,23 +1,26 @@
 import logging
 import os
-from langchain_chroma import Chroma
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
-from langchain.schema import HumanMessage
+# from langchain_chroma import Chroma
+# from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+# from langchain.prompts import ChatPromptTemplate
+from langchain.schema import HumanMessage, SystemMessage, AIMessage
+from langchain_community.embeddings import OpenAIEmbeddings
+from langchain_community.vectorstores import Chroma
+from langchain_community.chat_models import ChatOpenAI
 from dotenv import load_dotenv
 
 load_dotenv()
 
 CHROMA_PATH = "data/chroma"
 
-PROMPT_TEMPLATE = """
-You are a specialized assistant that helps developers create and troubleshoot Terraform configuration files.
-Use only the following context to answer the question:
+# PROMPT_TEMPLATE = """
+# You are a specialized assistant that helps developers create and troubleshoot Terraform configuration files.
+# Use only the following context to answer the question:
 
-{context}
+# {context}
 
-Answer the question based on the above context: {question}
-"""
+# Answer the question based on the above context: {question}
+# """
 
 def get_source_from_metadata(metadata):
     page_title = metadata.get('page_title', '')
@@ -31,7 +34,18 @@ def get_source_from_metadata(metadata):
     else:
         return "Unknown source"
 
-def main(query_text):
+def truncate_history(messages, max_tokens=3000):
+    total_tokens = 0
+    truncated_messages = []
+    for message in reversed(messages):
+        tokens = len(message.content.split())
+        total_tokens += tokens
+        if total_tokens > max_tokens:
+            break
+        truncated_messages.insert(0, message)
+    return truncated_messages
+
+def main(query_text, history):
     # Set up logging
     logging.basicConfig(level=logging.INFO, filename='./backend/backend.log', filemode='w')
 
@@ -52,30 +66,59 @@ def main(query_text):
         results = db.similarity_search_with_relevance_scores(query_text, k=3)
         logging.info(f"Query '{query_text}' returned {len(results)} results.")
 
-        if len(results) == 0 or results[0][1] < 0.7:
-            logging.warning("No relevant results found for the query.")
-            return "I am only a specialized assistant for Terraform configuration files. I am unable to answer your question."
-
-        # Log the results for debugging
+        # Initialize context and sources
         context_text = ""
         sources = []
-        for document, score in results:
-            logging.info(f"Document content: {document.page_content}, Score: {score}")
-            context_text += document.page_content + "\n\n---\n\n"
-            source = get_source_from_metadata(document.metadata)
-            if source not in sources:
-                sources.append(source)
 
-        prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
-        prompt = prompt_template.format(context=context_text, question=query_text)
+        if len(results) == 0 or results[0][1] < 0.7:
+            logging.warning("No relevant results found for the query.")
+            # context_text and sources remain empty
+        else:
+            for document, score in results:
+                logging.info(f"Document content: {document.page_content}, Score: {score}")
+                context_text += document.page_content + "\n\n---\n\n"
+                source = get_source_from_metadata(document.metadata)
+                if source not in sources:
+                    sources.append(source)
 
-        logging.info("Generated prompt for model: %s", prompt)
+        messages = []
+
+        # Add system prompt with context and policies
+        system_message = SystemMessage(content=(
+            "You are a specialized assistant that helps developers create and troubleshoot Terraform configuration files.\n\n"
+            "Instructions:\n"
+            "- Use **only** the following provided context to answer the user's question.\n"
+            "- If the answer is not contained within the context, politely inform the user that you cannot assist with that request.\n"
+            "- Provide clear and concise explanations in markdown format.\n"
+            "- Use bullet points for lists and triple backticks for code blocks.\n"
+            "- When applicable, reference the sources from the context in your response.\n"
+            "- Do not provide information outside of Terraform configuration files.\n"
+            f"{context_text}\n\n"
+        ))
+        messages.append(system_message)
+
+        # Append the conversation history
+        for msg in history:
+            if msg['role'] == 'user':
+                messages.append(HumanMessage(content=msg['content']))
+            elif msg['role'] == 'assistant':
+                messages.append(AIMessage(content=msg['content']))
+
+        # Truncate history to fit within the token limit
+        messages = truncate_history(messages)
 
         model = ChatOpenAI()
-        response = model.invoke([HumanMessage(content=prompt)])
-        response_text = response.content
 
-        formatted_response = f"{response_text}\n\nSources:\n" + "\n".join(f"- {source}" for source in sources)
+        response = model.invoke(messages)
+        response_text = response.content.rstrip()
+
+        # Conditionally format the response based on the presence of sources
+        if sources:
+            formatted_response = f"{response_text}\n\nSources:\n" + "\n".join(f"- {source}" for source in sources)
+        else:
+             formatted_response = response_text
+
+
         return formatted_response
 
     except Exception as e:

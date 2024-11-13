@@ -82,6 +82,9 @@ __pycache__/
 *.py[cod]
 *.pyc
 
+# Ignore Flask-Session data
+flask_session/
+
 # Ignore Java compiled files (for Java projects)
 *.class
 *.jar

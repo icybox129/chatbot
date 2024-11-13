@@ -1,11 +1,24 @@
-from flask import Flask, request, jsonify, render_template
-from backend.query_data import get_source_from_metadata, main
+from flask import Flask, request, jsonify, render_template, session
+from flask_session import Session
+from backend.query_data import main
+import os
 
 app = Flask(
     __name__,
     template_folder="frontend/templates", 
     static_folder="frontend/static"
 )
+
+# Remember to replace this with a more secure random value in prod
+app.secret_key = os.urandom(24)
+
+# Configure server-side session
+app.config['SESSION_TYPE'] = 'filesystem' # For dev, use redis in prod maybe
+app.config['SESSION_PERMANENT'] = False
+app.config['SESSION_USE_SIGNER'] = True
+
+# Initialise the session
+Session(app)
 
 @app.route('/')
 def home():
@@ -15,9 +28,29 @@ def home():
 def handle_query():
     data = request.get_json()
     query_text = data.get('query')
+
+    # Retrieve the conversation history from session or initialise it
+    history = session.get('history', [])
+
+    # Append the new user query to the history
+    history.append({"role": "user", "content": query_text})
+
+    # Call the main function with the updated history
+    response_text = main(query_text, history)
+
+    # Append the bots resposne to the history
+    history.append({"role": "assistant", "content": response_text})
+
+    # Save the updated histroy back to the session
+    session['history'] = history
     
-    response = main(query_text)
-    return jsonify({"response": response})
+    # response = main(query_text)
+    return jsonify({"response": response_text})
+
+@app.route('/new_conversation', methods=['POST'])
+def new_conversation():
+    session.pop('history', None)
+    return jsonify({"message": "New conversation started"})
 
 if __name__ == '__main__':
     app.run(debug=True)

@@ -19,13 +19,15 @@ function renderCodeBlock(language, code) {
 function renderResponse(text) {
     // Handle responses with code blocks
     if (text.includes('```')) {
-        return text.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, language, code) => {
+        text = text.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, language, code) => {
             return renderCodeBlock(language || '', code.trim());
         });
     }
-    
-    // Handle regular text
-    return text;
+
+    // Replace newline characters with <br> tags
+    const htmlText = text.replace(/\n/g, '<br>');
+
+    return htmlText;
 }
 
 function submitQuery() {
@@ -86,7 +88,14 @@ function submitQuery() {
     }, 100);
 }
 
-// Add the redirectToHomepage function here
 function redirectToHomepage() {
-    window.location.href = '/';
+    fetch('/new_conversation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(() => {
+        // Clear the chat window
+        const chatWindow = document.getElementById('chat-window');
+        chatWindow.innerHTML = '';
+    })
 }
