@@ -110,13 +110,14 @@ def main(query_text, history):
         model = ChatOpenAI()
 
         response = model.invoke(messages)
-        response_text = response.content
+        response_text = response.content.rstrip()
 
         # Conditionally format the response based on the presence of sources
         if sources:
             formatted_response = f"{response_text}\n\nSources:\n" + "\n".join(f"- {source}" for source in sources)
         else:
-            formatted_response = response_text
+             formatted_response = response_text
+
 
         return formatted_response
 
