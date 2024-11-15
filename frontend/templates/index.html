@@ -6,14 +6,6 @@
     <title>Chat Assistant</title>
     <!-- Prism CSS -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
-    <!-- Prism JS Core -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-    <!-- Prism HCL Language Component -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-hcl.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
-    <!-- Your Main JavaScript File -->
-    <script src="{{ url_for('static', filename='main.js') }}"></script>
-    
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
@@ -21,7 +13,7 @@
         <!-- Sidebar -->
         <div class="sidebar">
             <h1>Chatbot</h1>
-            <button class="new-conversation-btn" onclick="startNewConversation()">+ New Chat</button>
+            <button class="new-conversation-btn" id="new-chat-btn">+ New Chat</button>
             <div class="previous-chats">
                 <h2>History</h2>
                 <!-- Chat history dynamically populated -->
@@ -34,11 +26,17 @@
                 <!-- Messages dynamically populated -->
             </div>
             <div class="chat-input">
-                <input type="text" id="user-input" placeholder="Send a message..." onkeydown="handleEnter(event)">
-                <button onclick="sendMessage()">➤</button>
+                <input type="text" id="user-input" placeholder="Send a message...">
+                <button id="send-button">➤</button>
             </div>
         </div>
     </div>
-
+    <!-- Prism JS Core -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <!-- Prism HCL Language Component -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-hcl.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
+    <!-- Your Main JavaScript File -->
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
 </body>
 </html>

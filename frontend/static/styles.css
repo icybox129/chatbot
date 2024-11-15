@@ -31,7 +31,7 @@ body, html {
 
 /* Sidebar */
 .sidebar {
-    width: 300px;
+    width: 250px;
     background-color: var(--chat-bg-color);
     display: flex;
     flex-direction: column;
@@ -115,6 +115,7 @@ body, html {
     word-wrap: break-word;
     white-space: pre-wrap;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Subtle shadow for aesthetics */
+    margin-bottom: 10px;
 }
 
 
@@ -219,6 +220,47 @@ body, html {
     white-space: pre-wrap;
 }
 
+/* Loading Indicator */
+
+/* Shimmer effect for the typing indicator */
+.loading-indicator {
+    min-height: 20px; /* Ensure it has enough space */
+    font-size: 1rem;
+    font-weight: bold;
+    color: #808080; /* Default text color for fallback */
+    position: relative;
+    overflow: hidden; /* Ensure the animation stays within bounds */
+    background: linear-gradient(90deg, #606060 25%, #a0a0a0 50%, #606060 75%);
+    background-size: 200% 100%;
+    
+    /* Add compatibility properties */
+    -webkit-background-clip: text; /* For Safari and Chrome */
+    background-clip: text; /* Standard property for future compatibility */
+
+    -webkit-text-fill-color: transparent; /* Required for text transparency in WebKit browsers */
+    animation: loading-animation 3s infinite;
+    margin-bottom: 10px; /* Add spacing below the bubble */
+}
+
+
+/* Normal bot message without shimmer */
+.bot-message {
+    background-color: var(--input-bg-color);
+    color: white;
+    padding: 15px;
+    border-radius: 10px;
+    line-height: 1.5;
+}
+
+
+@keyframes loading-animation {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
 
 
 @media (max-width: 768px) {
