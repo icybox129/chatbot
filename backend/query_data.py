@@ -1,26 +1,24 @@
 import logging
 import os
-# from langchain_chroma import Chroma
-# from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-# from langchain.prompts import ChatPromptTemplate
+import tiktoken
 from langchain.schema import HumanMessage, SystemMessage, AIMessage
-from langchain_community.embeddings import OpenAIEmbeddings
-from langchain_community.vectorstores import Chroma
-from langchain_community.chat_models import ChatOpenAI
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain_chroma import Chroma
+from langchain_community.callbacks.openai_info import OpenAICallbackHandler
 from dotenv import load_dotenv
 
 load_dotenv()
 
-CHROMA_PATH = "data/chroma"
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    filename='./backend/backend.log',
+    filemode='a',
+    format='%(asctime)s %(levelname)s:%(message)s'
+)
 
-# PROMPT_TEMPLATE = """
-# You are a specialized assistant that helps developers create and troubleshoot Terraform configuration files.
-# Use only the following context to answer the question:
-
-# {context}
-
-# Answer the question based on the above context: {question}
-# """
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+CHROMA_PATH = os.path.join(BASE_DIR, "data/chroma")
 
 def get_source_from_metadata(metadata):
     page_title = metadata.get('page_title', '')
@@ -34,21 +32,27 @@ def get_source_from_metadata(metadata):
     else:
         return "Unknown source"
 
-def truncate_history(messages, max_tokens=3000):
-    total_tokens = 0
+def truncate_history(messages, max_tokens=3000, model_name='gpt-3.5-turbo', reserved_tokens=500):
+    encoding = tiktoken.encoding_for_model(model_name)
+    total_tokens = reserved_tokens
     truncated_messages = []
+    message_token_counts = []
+    # Reverse the messages to start counting from the most recent
     for message in reversed(messages):
-        tokens = len(message.content.split())
+        # Calculate tokens for message content plus metadata tokens
+        tokens = len(encoding.encode(message.content)) + 4
         total_tokens += tokens
         if total_tokens > max_tokens:
             break
         truncated_messages.insert(0, message)
+        message_token_counts.insert(0, (message, tokens))
+    # Log the token counts for each message
+    for msg, token_count in message_token_counts:
+        logging.info(f"Message from {type(msg).__name__}: {token_count} tokens")
+    logging.info(f"Total tokens in request (including reserved for response): {total_tokens}")   
     return truncated_messages
 
 def main(query_text, history):
-    # Set up logging
-    logging.basicConfig(level=logging.INFO, filename='./backend/backend.log', filemode='w')
-
     # Check if the Chroma directory exists
     if not os.path.exists(CHROMA_PATH):
         logging.error(f"Chroma directory does not exist: {CHROMA_PATH}")
@@ -106,11 +110,26 @@ def main(query_text, history):
                 messages.append(AIMessage(content=msg['content']))
 
         # Truncate history to fit within the token limit
-        messages = truncate_history(messages)
+        messages = truncate_history(messages, max_tokens=3000, reserved_tokens=500)
 
-        model = ChatOpenAI()
+        openai_callback = OpenAICallbackHandler()
+
+        model = ChatOpenAI(
+            model_name='gpt-3.5-turbo',
+            temperature=0.7,
+            max_tokens=500,
+            callbacks=[openai_callback],
+            verbose=True
+        )
 
         response = model.invoke(messages)
+
+        # Log token usage
+        logging.info(f"Prompt tokens used: {openai_callback.prompt_tokens}")
+        logging.info(f"Completion tokens used: {openai_callback.completion_tokens}")
+        logging.info(f"Total tokens used: {openai_callback.total_tokens}")
+        logging.info(f"Total cost (USD): {openai_callback.total_cost}")
+
         response_text = response.content.rstrip()
 
         # Conditionally format the response based on the presence of sources

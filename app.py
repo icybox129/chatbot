@@ -27,7 +27,9 @@ def home():
 @app.route('/api/query', methods=['POST'])
 def handle_query():
     data = request.get_json()
-    query_text = data.get('query')
+    query_text = data.get('query', '').strip()
+    if not query_text:
+        return jsonify({'error': 'Invalid input'}), 400
 
     # Retrieve the conversation history from session or initialise it
     history = session.get('history', [])

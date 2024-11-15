@@ -1,15 +1,8 @@
-document.addEventListener('DOMContentLoaded', () => {
-    if (typeof hljs !== 'undefined') {
-        // Register 'terraform' as an alias for 'hcl'
-        hljs.registerAliases('terraform', { languageName: 'hcl' });
-        hljs.highlightAll();
-    } else {
-        console.error('Highlight.js is not defined.');
-    }
-});
-
 function handleEnter(event) {
-    if (event.key === 'Enter') sendMessage();
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+    }
 }
 
 function sanitizeHtml(str) {
@@ -83,8 +76,8 @@ function sendMessage() {
     })
     .catch(error => {
         console.error('Error in fetch operation:', error);
-        botMessage.textContent = `Error: ${error.message || 'Unable to fetch response'}`;
-    });
+        botMessage.textContent = 'Sorry, something went wrong. Please try again later.';
+    });    
 }
 
 function startNewConversation() {
@@ -126,6 +119,4 @@ function enableCodeCopying() {
     });
 }
 
-
-console.log('Available languages:', hljs.listLanguages());
 
