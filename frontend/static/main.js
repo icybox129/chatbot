@@ -82,7 +82,12 @@ function sendMessage() {
     .catch(error => {
         console.error('Error in fetch operation:', error);
         botMessage.textContent = `Error: ${error.message || 'Something went wrong. Please try again later.'}`;
-    });
+    })
+    .finally(() => {
+        // Re-enable the input box after the bot has responded
+        userInput.disabled = false;
+        userInput.focus(); // Bring ther focus back to the input box
+    })
 }
 
 function startNewConversation() {
@@ -94,35 +99,31 @@ function startNewConversation() {
 }
 
 function enableCodeCopying() {
-    // Select all code blocks in the chat window
-    const codeBlocks = document.querySelectorAll('.chat-window pre');
+    const chatWindow = document.getElementById('chat-window');
+    const codeBlocks = chatWindow.querySelectorAll('pre:not(.copy-enabled)');
 
     codeBlocks.forEach(block => {
-        // Skip if the copy button already exists
-        if (block.querySelector('.copy-button')) return;
-
-        // Create the copy button
+        block.classList.add('copy-enabled');
         const copyButton = document.createElement('button');
         copyButton.className = 'copy-button';
         copyButton.textContent = 'Copy';
 
-        // Add click event to copy only the code text
         copyButton.addEventListener('click', () => {
-            const codeElement = block.querySelector('code'); // Get the <code> inside the <pre>
-            const codeText = codeElement ? codeElement.innerText : ''; // Extract only the code text
+            const codeElement = block.querySelector('code');
+            const codeText = codeElement ? codeElement.innerText : '';
 
             navigator.clipboard.writeText(codeText).then(() => {
-                copyButton.textContent = 'Copied!'; // Temporary success message
-                setTimeout(() => (copyButton.textContent = 'Copy'), 2000); // Reset button text
+                copyButton.textContent = 'Copied!';
+                setTimeout(() => (copyButton.textContent = 'Copy'), 2000);
             }).catch(err => {
                 console.error('Failed to copy text: ', err);
             });
         });
 
-        // Add the button to the code block
         block.appendChild(copyButton);
     });
 }
+
 
 // Add event listeners
 document.getElementById('user-input').addEventListener('keydown', handleEnter);
