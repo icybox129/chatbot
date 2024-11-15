@@ -5,24 +5,22 @@ function handleEnter(event) {
     }
 }
 
-function sanitizeHtml(str) {
-    const temp = document.createElement('div');
-    temp.textContent = str;
-    return temp.innerHTML;
-}
-
 function renderResponse(text) {
-    // Regex to match code blocks with or without language specifier
-    return text.replace(/```(\w+)?\s*[\n\r]+([\s\S]*?)```/g, (match, language, code) => {
+    // Sanitize the entire text first
+    const sanitizedText = DOMPurify.sanitize(text);
+
+    // Process code blocks
+    return sanitizedText.replace(/```(\w+)?\s*[\n\r]+([\s\S]*?)```/g, (match, language, code) => {
         return renderCodeBlock(language || 'plaintext', code.trim());
     });
 }
 
 function renderCodeBlock(language, code) {
     const normalizedLanguage = language.toLowerCase() === 'terraform' ? 'hcl' : language.toLowerCase();
-    return `<pre><code class="language-${sanitizeHtml(normalizedLanguage)}">${sanitizeHtml(code)}</code></pre>`;
+    const sanitizedLanguage = DOMPurify.sanitize(normalizedLanguage, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
+    const sanitizedCode = DOMPurify.sanitize(code, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
+    return `<pre><code class="language-${sanitizedLanguage}">${sanitizedCode}</code></pre>`;
 }
-
 
 // Dynamically add user and bot messages
 function sendMessage() {
@@ -32,10 +30,16 @@ function sendMessage() {
 
     if (!message) return; // Do nothing if the input is empty
 
+    // Disable the input box while the bot is responding
+    userInput.disabled = true;
+
+    // Sanitize user input
+    const sanitizedMessage = DOMPurify.sanitize(message);
+
     // Add user message to the chat window
     const userMessage = document.createElement('div');
     userMessage.className = 'message user-message';
-    userMessage.textContent = message;
+    userMessage.textContent = sanitizedMessage;
     chatWindow.appendChild(userMessage);
 
     userInput.value = ''; // Clear the input box
@@ -62,22 +66,23 @@ function sendMessage() {
         return response.json();
     })
     .then(data => {
+        // Render the response (sanitization occurs inside renderResponse)
         const formattedResponse = renderResponse(data.response);
         botMessage.innerHTML = formattedResponse;
-    
+
         // Apply syntax highlighting to the new content
         Prism.highlightAllUnder(botMessage);
-    
+
         // Enable code copying for all code blocks
         enableCodeCopying();
-    
+
         // Scroll to the bottom after rendering the response
         chatWindow.scrollTop = chatWindow.scrollHeight;
     })
     .catch(error => {
         console.error('Error in fetch operation:', error);
-        botMessage.textContent = 'Sorry, something went wrong. Please try again later.';
-    });    
+        botMessage.textContent = `Error: ${error.message || 'Something went wrong. Please try again later.'}`;
+    });
 }
 
 function startNewConversation() {
@@ -119,4 +124,6 @@ function enableCodeCopying() {
     });
 }
 
-
+// Add event listeners
+document.getElementById('user-input').addEventListener('keydown', handleEnter);
+document.getElementById('send-button').addEventListener('click', sendMessage);

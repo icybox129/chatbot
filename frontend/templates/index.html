@@ -6,13 +6,11 @@
     <title>Chat Assistant</title>
     <!-- Prism CSS -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
-
     <!-- Prism JS Core -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-
     <!-- Prism HCL Language Component -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-hcl.min.js"></script>
-
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
     <!-- Your Main JavaScript File -->
     <script src="{{ url_for('static', filename='main.js') }}"></script>
     
@@ -42,7 +40,5 @@
         </div>
     </div>
 
-    <!-- Your Main JavaScript File -->
-    <!-- <script src="{{ url_for('static', filename='main.js') }}"></script> -->
 </body>
 </html>
