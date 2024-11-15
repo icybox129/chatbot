@@ -47,7 +47,7 @@ function sendMessage() {
 
     // Display bot typing indicator
     const botMessage = document.createElement('div');
-    botMessage.className = 'message bot-message';
+    botMessage.className = 'message bot-message loading-indicator';
     botMessage.textContent = 'Typing...';
     chatWindow.appendChild(botMessage);
 
@@ -66,6 +66,10 @@ function sendMessage() {
         return response.json();
     })
     .then(data => {
+        // Remove the shimmer effect by replacing the class
+        botMessage.classList.remove('loading-indicator');
+        botMessage.classList.add('bot-message'); // Ensure the proper class for bot messages
+        
         // Render the response (sanitization occurs inside renderResponse)
         const formattedResponse = renderResponse(data.response);
         botMessage.innerHTML = formattedResponse;
@@ -81,8 +85,10 @@ function sendMessage() {
     })
     .catch(error => {
         console.error('Error in fetch operation:', error);
+        botMessage.classList.remove('loading-indicator');
+        botMessage.classList.add('bot-message');
         botMessage.textContent = `Error: ${error.message || 'Something went wrong. Please try again later.'}`;
-    })
+    })    
     .finally(() => {
         // Re-enable the input box after the bot has responded
         userInput.disabled = false;
@@ -126,5 +132,22 @@ function enableCodeCopying() {
 
 
 // Add event listeners
-document.getElementById('user-input').addEventListener('keydown', handleEnter);
-document.getElementById('send-button').addEventListener('click', sendMessage);
+document.addEventListener('DOMContentLoaded', () => {
+    const newChatButton = document.getElementById('new-chat-btn');
+    const sendButton = document.getElementById('send-button');
+    const userInput = document.getElementById('user-input');
+
+    if (newChatButton) {
+        newChatButton.addEventListener('click', startNewConversation);
+    }
+
+    if (sendButton) {
+        sendButton.addEventListener('click', sendMessage);
+    }
+
+    if (userInput) {
+        userInput.addEventListener('keydown', handleEnter);
+    }
+});
+
+
