@@ -1,7 +1,12 @@
 function handleEnter(event) {
+    const userInput = document.getElementById('user-input');
+
     if (event.key === 'Enter' && !event.shiftKey) {
-        event.preventDefault();
-        sendMessage();
+        event.preventDefault(); // Prevent default new line
+        sendMessage(); // Trigger message sending
+    } else if (event.key === 'Enter') {
+        userInput.style.height = 'auto'; // Reset height for recalculation
+        userInput.style.height = `${userInput.scrollHeight}px`; // Adjust height to content
     }
 }
 
@@ -43,6 +48,7 @@ function sendMessage() {
     chatWindow.appendChild(userMessage);
 
     userInput.value = ''; // Clear the input box
+    userInput.style.height = 'auto'; // Reset textarea height
     chatWindow.scrollTop = chatWindow.scrollHeight; // Scroll to the bottom
 
     // Display bot typing indicator
@@ -92,8 +98,8 @@ function sendMessage() {
     .finally(() => {
         // Re-enable the input box after the bot has responded
         userInput.disabled = false;
-        userInput.focus(); // Bring ther focus back to the input box
-    })
+        userInput.focus(); // Bring the focus back to the input box
+    });
 }
 
 function startNewConversation() {
@@ -147,7 +153,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (userInput) {
         userInput.addEventListener('keydown', handleEnter);
+
+        // Add auto-resizing with max-height restriction
+        userInput.addEventListener('input', () => {
+            userInput.style.height = 'auto'; // Reset height to calculate scrollHeight
+            if (userInput.scrollHeight <= 150) { // Match max-height from CSS
+                userInput.style.height = `${userInput.scrollHeight}px`; // Adjust height
+            } else {
+                userInput.style.height = '150px'; // Restrict to max height
+            }
+        });
     }
 });
-
-
