@@ -157,7 +157,17 @@ def main(query_text, history):
         # Log the final formatted response
         logging.info(f"Formatted response being returned: {formatted_response}")
 
-        return formatted_response
+        # Prepare a structured response with both the formatted response and sources
+        response_data = {
+            "response": response_text,  # The bot's response
+            "sources": sorted(list(sources))  # Ensure sources are deduplicated and sorted
+        }
+
+        # Log the structured response
+        logging.info(f"Response data being returned: {response_data}")
+
+        return response_data  # Return the response as a dictionary
+
 
     except Exception as e:
         logging.error(f"An error occurred: {e}", exc_info=True)

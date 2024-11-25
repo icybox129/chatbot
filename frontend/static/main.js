@@ -10,7 +10,7 @@ function handleEnter(event) {
     }
 }
 
-function renderResponse(text) {
+function renderResponse(text, sources = []) {
     // Sanitize and parse the markdown
     const sanitizedText = DOMPurify.sanitize(text, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
     const html = marked.parse(sanitizedText);
@@ -22,7 +22,23 @@ function renderResponse(text) {
         ALLOWED_ATTR: ['class', 'href', 'target', 'rel']
     });
 
-    return sanitizedHtml;
+    // Create the main response HTML
+    let responseHtml = `<div>${sanitizedHtml}</div>`;
+
+    // If sources are provided, append them in a styled section
+    if (sources.length > 0) {
+        const sourcesHtml = `
+            <div class="sources-section">
+                <h4>Sources:</h4>
+                <ul>
+                    ${sources.map(source => `<li>${DOMPurify.sanitize(source)}</li>`).join('')}
+                </ul>
+            </div>
+        `;
+        responseHtml += sourcesHtml;
+    }
+
+    return responseHtml;
 }
 
 function renderCodeBlock(language, code) {
@@ -77,20 +93,21 @@ function sendMessage() {
         return response.json();
     })
     .then(data => {
-        // Remove the shimmer effect by replacing the class
         botMessage.classList.remove('loading-indicator');
-        botMessage.classList.add('bot-message'); // Ensure the proper class for bot messages
+        botMessage.classList.add('bot-message');
         
-        // Render the response (sanitization occurs inside renderResponse)
-        const formattedResponse = renderResponse(data.response);
+        // Extract sources if available
+        const sources = data.sources || []; // Ensure sources is always an array
+        const formattedResponse = renderResponse(data.response, sources);
+        
         botMessage.innerHTML = formattedResponse;
-
+        
         // Apply syntax highlighting to the new content
         Prism.highlightAllUnder(botMessage);
-
+        
         // Enable code copying for all code blocks
         enableCodeCopying();
-
+        
         // Scroll to the bottom after rendering the response
         chatWindow.scrollTop = chatWindow.scrollHeight;
     })

@@ -308,6 +308,42 @@ body, html {
     border-radius: 4px;
 }
 
+/* Sources Section Styling with Flexbox */
+.sources-section {
+    display: flex;
+    flex-direction: column; /* Stack the heading and list vertically */
+    margin-top: 5px; /* Reduce space above the sources section */
+    padding: 8px 12px; /* Compact padding */
+    background-color: var(--input-bg-color); /* Subtle contrast */
+    border-left: 3px solid var(--primary-color); /* Visual indicator */
+    border-radius: 4px; /* Soft border rounding */
+    font-size: 0.85rem; /* Compact font size */
+    color: var(--text-color);
+    gap: 5px; /* Add space between elements */
+}
+
+.sources-section h4 {
+    margin: 0;
+    font-weight: bold;
+    color: var(--primary-color);
+    display: inline-flex; /* Align text with flexbox if needed */
+    align-items: center; /* Center vertically (optional) */
+}
+
+.sources-section ul {
+    margin: 0;
+    padding-left: 20px; /* Keep proper indentation */
+    list-style-type: disc;
+    display: flex; /* Flexbox for list items */
+    flex-direction: column; /* Ensure vertical stacking */
+    gap: 3px; /* Reduce spacing between list items */
+}
+
+.sources-section li {
+    margin: 0;
+    padding: 0;
+    line-height: 1.4; /* Tighten spacing within list items */
+}
 
 @keyframes loading-animation {
     0% {
