@@ -11,13 +11,18 @@ function handleEnter(event) {
 }
 
 function renderResponse(text) {
-    // Sanitize the entire text first
-    const sanitizedText = DOMPurify.sanitize(text);
+    // Sanitize and parse the markdown
+    const sanitizedText = DOMPurify.sanitize(text, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
+    const html = marked.parse(sanitizedText);
 
-    // Process code blocks
-    return sanitizedText.replace(/```(\w+)?\s*[\n\r]+([\s\S]*?)```/g, (match, language, code) => {
-        return renderCodeBlock(language || 'plaintext', code.trim());
+    // Sanitize the HTML, allowing specific tags and attributes
+    const sanitizedHtml = DOMPurify.sanitize(html, {
+        ALLOWED_TAGS: ['pre', 'code', 'span', 'div', 'p', 'ul', 'ol', 'li', 'strong', 'em', 'a',
+                       'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'br'],
+        ALLOWED_ATTR: ['class', 'href', 'target', 'rel']
     });
+
+    return sanitizedHtml;
 }
 
 function renderCodeBlock(language, code) {
@@ -112,17 +117,16 @@ function startNewConversation() {
 
 function enableCodeCopying() {
     const chatWindow = document.getElementById('chat-window');
-    const codeBlocks = chatWindow.querySelectorAll('pre:not(.copy-enabled)');
+    const codeBlocks = chatWindow.querySelectorAll('pre code:not(.copy-enabled)');
 
-    codeBlocks.forEach(block => {
-        block.classList.add('copy-enabled');
+    codeBlocks.forEach(codeElement => {
+        codeElement.classList.add('copy-enabled');
         const copyButton = document.createElement('button');
         copyButton.className = 'copy-button';
         copyButton.textContent = 'Copy';
 
         copyButton.addEventListener('click', () => {
-            const codeElement = block.querySelector('code');
-            const codeText = codeElement ? codeElement.innerText : '';
+            const codeText = codeElement.textContent;
 
             navigator.clipboard.writeText(codeText).then(() => {
                 copyButton.textContent = 'Copied!';
@@ -132,10 +136,12 @@ function enableCodeCopying() {
             });
         });
 
-        block.appendChild(copyButton);
+        // Position the copy button within the pre element
+        const preElement = codeElement.parentElement;
+        preElement.style.position = 'relative'; // Ensure positioning context
+        preElement.appendChild(copyButton);
     });
 }
-
 
 // Add event listeners
 document.addEventListener('DOMContentLoaded', () => {

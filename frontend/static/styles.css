@@ -82,7 +82,7 @@ body, html {
     display: flex;
     flex-direction: column;
     background-color: var(--background-dark);
-    height: 100%; /* Fill the remaining height */
+    height: 100%;
 }
 
 .chat-window {
@@ -129,16 +129,14 @@ body, html {
     color: white;
 }
 
-.user-message {
-    align-self: flex-end; /* Align user messages to the right */
-    background-color: var(--primary-color);
-    color: white;
-}
-
+/* Normal bot message without shimmer */
 .bot-message {
     align-self: flex-start; /* Align bot messages to the left */
     background-color: var(--input-bg-color);
     color: white;
+    padding: 15px;
+    border-radius: 10px;
+    line-height: 1.5;
 }
 
 /* Input Section */
@@ -221,38 +219,9 @@ body, html {
     opacity: 1;
 }
 
-/* .chat-window pre {
-    position: relative;
-    padding: 15px;
-    border-radius: 8px;
-    background-color: var(--code-bg-color);
-    color: var(--text-color);
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 0.9rem;
-    overflow-x: auto;
-    margin-top: 10px;
-} */
-
-.chat-window pre, .chat-window code {
-    position: relative;
-    background-color: var(--code-bg-color); /* Consistent code block color */
-    color: var(--text-color);
-    padding: 15px;
-    border-radius: 8px;
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 0.9rem;
-    overflow-x: auto; /* Horizontal scroll for long code lines */
-    margin-top: 10px; /* Add spacing above code blocks */
-}
-
 .chat-window pre {
     margin: 10px 0;
     line-height: 1.5;
-}
-
-.chat-window code {
-    display: block;
-    white-space: pre-wrap;
 }
 
 /* Loading Indicator */
@@ -278,13 +247,61 @@ body, html {
 }
 
 
-/* Normal bot message without shimmer */
-.bot-message {
-    background-color: var(--input-bg-color);
-    color: white;
+/* List Styles */
+/* Reset default list styles */
+.bot-message ul,
+.bot-message ol {
+    margin: 0;
+    padding: 0;
+    padding-left: 30px;
+    list-style-position: inside;
+    /* font-size: 0; */
+    display: flex;
+    flex-direction: column;
+}
+
+.bot-message li {
+    margin: 0;
+    padding: 0;
+    line-height: 1.4;
+    font-size: 1rem;
+}
+
+/* Remove default margins and padding from paragraphs in bot messages */
+.bot-message p {
+    margin: 0;
+    padding: 0;
+}
+
+/* Code Block Styles */
+.bot-message pre {
+    position: relative;
     padding: 15px;
-    border-radius: 10px;
+    border-radius: 8px;
+    background-color: var(--code-bg-color);
+    color: var(--text-color);
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.9rem;
+    overflow-x: auto;
+    margin: 10px 0;
     line-height: 1.5;
+}
+
+.bot-message pre code {
+    display: block;
+    white-space: pre;
+}
+
+/* Inline Code Styles */
+.bot-message p code,
+.bot-message li code,
+.bot-message span code {
+    background-color: var(--code-bg-color);
+    color: var(--highlight-bg-color);
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.9rem;
+    padding: 2px 4px;
+    border-radius: 4px;
 }
 
 
