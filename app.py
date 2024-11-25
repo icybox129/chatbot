@@ -38,16 +38,16 @@ def handle_query():
     history.append({"role": "user", "content": query_text})
 
     # Call the main function with the updated history
-    response_text = main(query_text, history)
+    response_data = main(query_text, history)
 
-    # Append the bots resposne to the history
-    history.append({"role": "assistant", "content": response_text})
+    # Append the bot's response to the history
+    history.append({"role": "assistant", "content": response_data["response"]})
 
-    # Save the updated histroy back to the session
+    # Save the updated history back to the session
     session['history'] = history
-    
-    # response = main(query_text)
-    return jsonify({"response": response_text})
+
+    # Return the structured response to the frontend
+    return jsonify(response_data)
 
 @app.route('/new_conversation', methods=['POST'])
 def new_conversation():
