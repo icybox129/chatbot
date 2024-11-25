@@ -131,6 +131,9 @@ body, html {
 
 /* Normal bot message without shimmer */
 .bot-message {
+    display: flex;
+    flex-direction: column; /* Stack elements vertically */
+    gap: 5px; /* Adjust the spacing between child elements */
     align-self: flex-start; /* Align bot messages to the left */
     background-color: var(--input-bg-color);
     color: white;
@@ -251,19 +254,20 @@ body, html {
 /* Reset default list styles */
 .bot-message ul,
 .bot-message ol {
-    margin: 0;
+    margin-top: 5px; /* Reduce spacing between "Sources:" and the list */
+    margin-bottom: 0; /* Ensure no unnecessary spacing at the bottom */
     padding: 0;
-    padding-left: 30px;
-    list-style-position: inside;
-    /* font-size: 0; */
+    padding-left: 20px; /* Adjust indentation if needed */
+    list-style-position: outside;
     display: flex;
     flex-direction: column;
 }
 
 .bot-message li {
     margin: 0;
+    margin-bottom: 5px;
     padding: 0;
-    line-height: 1.4;
+    line-height: 1.5;
     font-size: 1rem;
 }
 

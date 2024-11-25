@@ -21,8 +21,9 @@ BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 CHROMA_PATH = os.path.join(BASE_DIR, "data/chroma")
 
 def get_source_from_metadata(metadata):
-    page_title = metadata.get('page_title', '')
-    subcategory = metadata.get('subcategory', '')
+    page_title = metadata.get('page_title', '').strip()
+    subcategory = metadata.get('subcategory', '').strip()
+    
     if page_title and subcategory:
         return f"{subcategory} - {page_title}"
     elif page_title:
@@ -30,7 +31,8 @@ def get_source_from_metadata(metadata):
     elif subcategory:
         return subcategory
     else:
-        return "Unknown source"
+        return "unknown source"
+
 
 def truncate_history(messages, max_tokens=3000, model_name='gpt-3.5-turbo', reserved_tokens=500):
     encoding = tiktoken.encoding_for_model(model_name)
@@ -55,8 +57,9 @@ def truncate_history(messages, max_tokens=3000, model_name='gpt-3.5-turbo', rese
 def main(query_text, history):
     # Check if the Chroma directory exists
     if not os.path.exists(CHROMA_PATH):
-        logging.error(f"Chroma directory does not exist: {CHROMA_PATH}")
-        return "Error: Knowledge base not found."
+        error_message = "Error: The knowledge base is missing. Please contact support."
+        logging.error(error_message)
+        return error_message
 
     try:
         # Prepare the DB
@@ -68,26 +71,30 @@ def main(query_text, history):
 
         # Search the DB
         results = db.similarity_search_with_relevance_scores(query_text, k=3)
-        logging.info(f"Query '{query_text}' returned {len(results)} results.")
+        logging.info(f"Raw Chroma results: {results}")  # Debug raw results
 
         # Initialize context and sources
         context_text = ""
-        sources = []
+        sources = set()
 
         if len(results) == 0 or results[0][1] < 0.7:
             logging.warning("No relevant results found for the query.")
-            # context_text and sources remain empty
         else:
             for document, score in results:
                 logging.info(f"Document content: {document.page_content}, Score: {score}")
                 context_text += document.page_content + "\n\n---\n\n"
                 source = get_source_from_metadata(document.metadata)
-                if source not in sources:
-                    sources.append(source)
+                source = " ".join(source.split())  # Normalize whitespace
+                sources.add(source)  # Deduplicate
 
-        messages = []
+        # Convert the set to a sorted list
+        sources = sorted(list(sources))
+
+        # Log deduplicated sources
+        logging.info(f"Unique sources after deduplication: {sources}")
 
         # Add system prompt with context and policies
+        logging.info(f"Constructed context_text for system prompt: {context_text}")
         system_message = SystemMessage(content=(
             "You are a specialized assistant that helps developers create and troubleshoot Terraform configuration files.\n\n"
             "Instructions:\n"
@@ -100,7 +107,7 @@ def main(query_text, history):
             f"{context_text}\n\n"
         ))
 
-        messages.append(system_message)
+        messages = [system_message]
 
         # Append the conversation history
         for msg in history:
@@ -111,6 +118,7 @@ def main(query_text, history):
 
         # Truncate history to fit within the token limit
         messages = truncate_history(messages, max_tokens=3000, reserved_tokens=500)
+        logging.info(f"Truncated conversation history: {messages}")
 
         openai_callback = OpenAICallbackHandler()
 
@@ -132,12 +140,22 @@ def main(query_text, history):
 
         response_text = response.content.rstrip()
 
+        # Add logging to inspect response_text before appending sources
+        logging.info(f"Response text before checking for sources: {response_text}")
+
         # Conditionally format the response based on the presence of sources
         if sources:
-            formatted_response = f"{response_text}\n\nSources:\n" + "\n".join(f"- {source}" for source in sources)
+            # Check if the AI's response already contains a "Sources" section
+            if "Sources:" not in response_text and "Source:" not in response_text:
+                formatted_response = f"{response_text}\n\nSources:\n" + "\n".join(f"- {source}" for source in sources)
+            else:
+                # If the response already contains "Sources", use it as-is
+                formatted_response = response_text
         else:
-             formatted_response = response_text
+            formatted_response = response_text
 
+        # Log the final formatted response
+        logging.info(f"Formatted response being returned: {formatted_response}")
 
         return formatted_response
 
