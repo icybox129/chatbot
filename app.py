@@ -1,23 +1,25 @@
 from flask import Flask, request, jsonify, render_template, session
 from flask_session import Session
 from backend.query_data import main
+from cachelib.file import FileSystemCache
 import os
 
-app = Flask(
-    __name__,
-    template_folder="frontend/templates", 
-    static_folder="frontend/static"
+app = Flask(__name__, template_folder="frontend/templates", static_folder="frontend/static")
+
+# Session handling using cachelib
+session_cache = FileSystemCache(
+    cache_dir="./.flask_session/",
+    threshold=100,
+    mode=0o600
 )
 
-# Remember to replace this with a more secure random value in prod
-app.secret_key = os.urandom(24)
+app.config.update(
+    SESSION_TYPE='cachelib',
+    SESSION_CACHELIB=session_cache,
+    SESSION_PERMANENT=False,
+    SECRET_KEY=os.urandom(24)
+)
 
-# Configure server-side session
-app.config['SESSION_TYPE'] = 'filesystem' # For dev, use redis in prod maybe
-app.config['SESSION_PERMANENT'] = False
-app.config['SESSION_USE_SIGNER'] = True
-
-# Initialise the session
 Session(app)
 
 @app.route('/')

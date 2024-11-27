@@ -81,9 +81,11 @@ Thumbs.db
 __pycache__/
 *.py[cod]
 *.pyc
+*pytest_cache/
 
 # Ignore Flask-Session data
 flask_session/
+.flask_session/
 
 # Ignore Java compiled files (for Java projects)
 *.class
