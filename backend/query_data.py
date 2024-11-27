@@ -34,7 +34,7 @@ def get_source_from_metadata(metadata):
         return "unknown source"
 
 
-def truncate_history(messages, max_tokens=3000, model_name='gpt-3.5-turbo', reserved_tokens=500):
+def truncate_history(messages, max_tokens=3000, model_name='gpt-4o-mini', reserved_tokens=500):
     encoding = tiktoken.encoding_for_model(model_name)
     total_tokens = reserved_tokens
     truncated_messages = []
