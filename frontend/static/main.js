@@ -1,4 +1,4 @@
-function handleEnter(event) {
+export function handleEnter(event) {
     const userInput = document.getElementById('user-input');
 
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -10,7 +10,7 @@ function handleEnter(event) {
     }
 }
 
-function renderResponse(text, sources = []) {
+export function renderResponse(text, sources = []) {
     // Sanitize and parse the markdown
     const sanitizedText = DOMPurify.sanitize(text, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
     const html = marked.parse(sanitizedText);
@@ -41,15 +41,15 @@ function renderResponse(text, sources = []) {
     return responseHtml;
 }
 
-function renderCodeBlock(language, code) {
-    const normalizedLanguage = language.toLowerCase() === 'terraform' ? 'hcl' : language.toLowerCase();
-    const sanitizedLanguage = DOMPurify.sanitize(normalizedLanguage, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
-    const sanitizedCode = DOMPurify.sanitize(code, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
-    return `<pre><code class="language-${sanitizedLanguage}">${sanitizedCode}</code></pre>`;
-}
+// function renderCodeBlock(language, code) {
+//     const normalizedLanguage = language.toLowerCase() === 'terraform' ? 'hcl' : language.toLowerCase();
+//     const sanitizedLanguage = DOMPurify.sanitize(normalizedLanguage, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
+//     const sanitizedCode = DOMPurify.sanitize(code, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
+//     return `<pre><code class="language-${sanitizedLanguage}">${sanitizedCode}</code></pre>`;
+// }
 
 // Dynamically add user and bot messages
-function sendMessage() {
+export function sendMessage() {
     const userInput = document.getElementById('user-input');
     const chatWindow = document.getElementById('chat-window');
     const message = userInput.value.trim();
@@ -124,7 +124,7 @@ function sendMessage() {
     });
 }
 
-function startNewConversation() {
+export function startNewConversation() {
     document.getElementById('chat-window').innerHTML = '';
     fetch('/new_conversation', {
         method: 'POST',
@@ -132,7 +132,7 @@ function startNewConversation() {
     });
 }
 
-function enableCodeCopying() {
+export function enableCodeCopying() {
     const chatWindow = document.getElementById('chat-window');
     const codeBlocks = chatWindow.querySelectorAll('pre code:not(.copy-enabled)');
 
@@ -161,30 +161,35 @@ function enableCodeCopying() {
 }
 
 // Add event listeners
-document.addEventListener('DOMContentLoaded', () => {
-    const newChatButton = document.getElementById('new-chat-btn');
-    const sendButton = document.getElementById('send-button');
-    const userInput = document.getElementById('user-input');
-
-    if (newChatButton) {
+export function initialize() {
+    // Add event listeners
+    document.addEventListener('DOMContentLoaded', () => {
+      const newChatButton = document.getElementById('new-chat-btn');
+      const sendButton = document.getElementById('send-button');
+      const userInput = document.getElementById('user-input');
+  
+      if (newChatButton) {
         newChatButton.addEventListener('click', startNewConversation);
-    }
-
-    if (sendButton) {
+      }
+  
+      if (sendButton) {
         sendButton.addEventListener('click', sendMessage);
-    }
-
-    if (userInput) {
+      }
+  
+      if (userInput) {
         userInput.addEventListener('keydown', handleEnter);
-
+  
         // Add auto-resizing with max-height restriction
         userInput.addEventListener('input', () => {
-            userInput.style.height = 'auto'; // Reset height to calculate scrollHeight
-            if (userInput.scrollHeight <= 150) { // Match max-height from CSS
-                userInput.style.height = `${userInput.scrollHeight}px`; // Adjust height
-            } else {
-                userInput.style.height = '150px'; // Restrict to max height
-            }
+          userInput.style.height = 'auto'; // Reset height to calculate scrollHeight
+          if (userInput.scrollHeight <= 150) { // Match max-height from CSS
+            userInput.style.height = `${userInput.scrollHeight}px`; // Adjust height
+          } else {
+            userInput.style.height = '150px'; // Restrict to max height
+          }
         });
-    }
-});
+      }
+    });
+  }
+
+  initialize();
