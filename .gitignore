@@ -110,4 +110,5 @@ coverage/
 
 # Ignore Chroma and SQLite files
 chroma/
+raw/
 *.sqlite3
