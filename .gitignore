@@ -1,3 +1,7 @@
+chroma/
+raw/
+data/
+
 # Ignore node_modules folder (for Node.js projects)
 node_modules/
 
@@ -109,5 +113,4 @@ coverage/
 *.pem
 
 # Ignore Chroma and SQLite files
-chroma/
 *.sqlite3

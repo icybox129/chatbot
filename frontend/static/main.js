@@ -41,12 +41,12 @@ function renderResponse(text, sources = []) {
     return responseHtml;
 }
 
-function renderCodeBlock(language, code) {
-    const normalizedLanguage = language.toLowerCase() === 'terraform' ? 'hcl' : language.toLowerCase();
-    const sanitizedLanguage = DOMPurify.sanitize(normalizedLanguage, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
-    const sanitizedCode = DOMPurify.sanitize(code, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
-    return `<pre><code class="language-${sanitizedLanguage}">${sanitizedCode}</code></pre>`;
-}
+// function renderCodeBlock(language, code) {
+//     const normalizedLanguage = language.toLowerCase() === 'terraform' ? 'hcl' : language.toLowerCase();
+//     const sanitizedLanguage = DOMPurify.sanitize(normalizedLanguage, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
+//     const sanitizedCode = DOMPurify.sanitize(code, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
+//     return `<pre><code class="language-${sanitizedLanguage}">${sanitizedCode}</code></pre>`;
+// }
 
 // Dynamically add user and bot messages
 function sendMessage() {
@@ -59,29 +59,26 @@ function sendMessage() {
     // Disable the input box while the bot is responding
     userInput.disabled = true;
 
-    // Sanitize user input
-    const sanitizedMessage = DOMPurify.sanitize(message);
+    // Declare botMessage here
+    const botMessage = document.createElement('div');
+    botMessage.className = 'message bot-message loading-indicator';
+    botMessage.textContent = 'Typing...';
 
     // Add user message to the chat window
     const userMessage = document.createElement('div');
     userMessage.className = 'message user-message';
-    userMessage.textContent = sanitizedMessage;
+    userMessage.textContent = DOMPurify.sanitize(message);
     chatWindow.appendChild(userMessage);
 
     userInput.value = ''; // Clear the input box
     userInput.style.height = 'auto'; // Reset textarea height
-    chatWindow.scrollTop = chatWindow.scrollHeight; // Scroll to the bottom
 
-    // Display bot typing indicator
-    const botMessage = document.createElement('div');
-    botMessage.className = 'message bot-message loading-indicator';
-    botMessage.textContent = 'Typing...';
+    // Add botMessage to the chat window
     chatWindow.appendChild(botMessage);
-
     chatWindow.scrollTop = chatWindow.scrollHeight; // Ensure the latest message is visible
 
-    // Send the query to the backend
-    fetch('/api/query', {
+    // Return the fetch promise chain
+    return fetch('/api/query', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: message })
@@ -95,19 +92,19 @@ function sendMessage() {
     .then(data => {
         botMessage.classList.remove('loading-indicator');
         botMessage.classList.add('bot-message');
-        
+
         // Extract sources if available
-        const sources = data.sources || []; // Ensure sources is always an array
+        const sources = data.sources || [];
         const formattedResponse = renderResponse(data.response, sources);
-        
+
         botMessage.innerHTML = formattedResponse;
-        
+
         // Apply syntax highlighting to the new content
         Prism.highlightAllUnder(botMessage);
-        
+
         // Enable code copying for all code blocks
         enableCodeCopying();
-        
+
         // Scroll to the bottom after rendering the response
         chatWindow.scrollTop = chatWindow.scrollHeight;
     })
@@ -116,7 +113,7 @@ function sendMessage() {
         botMessage.classList.remove('loading-indicator');
         botMessage.classList.add('bot-message');
         botMessage.textContent = `Error: ${error.message || 'Something went wrong. Please try again later.'}`;
-    })    
+    })
     .finally(() => {
         // Re-enable the input box after the bot has responded
         userInput.disabled = false;
@@ -160,31 +157,50 @@ function enableCodeCopying() {
     });
 }
 
-// Add event listeners
-document.addEventListener('DOMContentLoaded', () => {
+// Update initialize() to directly add event listeners
+function initialize() {
     const newChatButton = document.getElementById('new-chat-btn');
     const sendButton = document.getElementById('send-button');
     const userInput = document.getElementById('user-input');
-
+  
     if (newChatButton) {
-        newChatButton.addEventListener('click', startNewConversation);
+      newChatButton.addEventListener('click', startNewConversation);
     }
-
+  
     if (sendButton) {
-        sendButton.addEventListener('click', sendMessage);
+      sendButton.addEventListener('click', sendMessage);
     }
-
+  
     if (userInput) {
-        userInput.addEventListener('keydown', handleEnter);
-
-        // Add auto-resizing with max-height restriction
-        userInput.addEventListener('input', () => {
-            userInput.style.height = 'auto'; // Reset height to calculate scrollHeight
-            if (userInput.scrollHeight <= 150) { // Match max-height from CSS
-                userInput.style.height = `${userInput.scrollHeight}px`; // Adjust height
-            } else {
-                userInput.style.height = '150px'; // Restrict to max height
-            }
-        });
+      userInput.addEventListener('keydown', handleEnter);
+  
+      // Add auto-resizing with max-height restriction
+      userInput.addEventListener('input', () => {
+        userInput.style.height = 'auto'; // Reset height to calculate scrollHeight
+        if (userInput.scrollHeight <= 150) { // Match max-height from CSS
+          userInput.style.height = `${userInput.scrollHeight}px`; // Adjust height
+        } else {
+          userInput.style.height = '150px'; // Restrict to max height
+        }
+      });
     }
-});
+  }
+  
+  // Move the DOMContentLoaded listener outside of initialize()
+  document.addEventListener('DOMContentLoaded', initialize);
+  
+  // Remove the immediate call to initialize()
+  // initialize(); // No longer needed
+  
+  // Conditional export for testing
+  if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+    module.exports = {
+      handleEnter,
+      renderResponse,
+      sendMessage,
+      startNewConversation,
+      enableCodeCopying,
+      initialize,
+    };
+  }
+  
