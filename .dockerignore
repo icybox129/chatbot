@@ -1,0 +1,41 @@
+# Ignore Python cache files
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignore virtual environments
+venv/
+.env/
+
+# Ignore local environment files
+*.log
+*.sqlite3
+
+# Ignore Docker-related files that don't need to be copied
+Dockerfile*
+docker-compose.yml
+
+# Ignore unnecessary system files
+*.swp
+.DS_Store
+Thumbs.db
+
+# # Ignore raw data or temporary directories
+# data/raw/  # If raw files are already stored in S3
+# data/chroma/  # If using a remote vector database like PostgreSQL
+
+# Ignore node_modules (if you have a package.json for testing)
+node_modules/
+npm-debug.log
+
+# Ignore frontend build files if they're already included in the image
+frontend/static/build/
+frontend/static/dist/
+
+# Ignore Git repository data
+.git/
+.gitignore
+
+# Ignore any additional secrets (e.g., AWS credentials)
+aws-credentials.json
+*.pem
