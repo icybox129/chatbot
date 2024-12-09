@@ -6,7 +6,8 @@
     <title>Chat Assistant</title>
     <!-- Prism CSS -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <!-- <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}"> -->
+    <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
     <div class="chat-container">
@@ -40,6 +41,6 @@
     <!-- Include Marked.js for Markdown parsing -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <!-- Your Main JavaScript File -->
-    <script src="{{ url_for('static', filename='main.js') }}"></script>
+    <script src="/static/main.js"></script>
 </body>
 </html>
