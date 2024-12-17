@@ -24,9 +24,16 @@ module "sg" {
   vpc_id        = module.network.vpc_id
 }
 
-module "ec2" {
-  source        = "../../modules/ec2"
-  naming_prefix = local.naming_prefix
-  ec2_sg_id     = [module.sg.ec2_sg_id]
-  subnet_id     = module.network.subnet_id
-}
+# module "ec2" {
+#   source        = "../../modules/ec2"
+#   naming_prefix = local.naming_prefix
+#   ec2_sg_id     = [module.sg.ec2_sg_id]
+#   subnet_id     = module.network.subnet_id
+# }
+
+module "ecs" {
+  source                 = "../../modules/ecs"
+  naming_prefix          = local.naming_prefix
+  ecs_container_instance = module.sg.ecs_container_instance
+  private_subnet_ids     = module.network.private_subnet_ids
+} 
