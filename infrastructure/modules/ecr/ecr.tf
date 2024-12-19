@@ -13,4 +13,8 @@ resource "aws_ecr_repository" "ecr" {
   tags = {
     Name = "${var.naming_prefix}-ecr"
   }
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }

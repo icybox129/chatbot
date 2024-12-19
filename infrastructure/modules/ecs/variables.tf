@@ -9,3 +9,11 @@ variable "ecs_container_instance" {
 variable "private_subnet_ids" {
   type = set(string)
 }
+
+variable "log_group_name" {
+  type = string
+}
+
+variable "alb_target_group_arn" {
+  type = string
+}

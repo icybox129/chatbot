@@ -36,4 +36,11 @@ module "ecs" {
   naming_prefix          = local.naming_prefix
   ecs_container_instance = module.sg.ecs_container_instance
   private_subnet_ids     = module.network.private_subnet_ids
-} 
+  log_group_name         = module.cloudwatch.log_group_name
+  alb_target_group_arn   = module.alb.target_group_arn
+}
+
+module "cloudwatch" {
+  source        = "../../modules/cloudwatch"
+  naming_prefix = local.naming_prefix
+}
