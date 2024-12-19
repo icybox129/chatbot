@@ -9,6 +9,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Load OpenAI API Key from environment
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+if not OPENAI_API_KEY:
+    raise ValueError("OPENAI_API_KEY environment variable is not set")
+
 # Set up logging
 logging.basicConfig(
     level=logging.INFO,
