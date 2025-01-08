@@ -77,7 +77,6 @@ resource "aws_route_table_association" "public" {
 
 resource "aws_eip" "nat_eip" {
   count = var.az_count
-  vpc   = true
 
   tags = {
     Name = "${var.naming_prefix}-nat-eip"

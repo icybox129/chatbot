@@ -17,3 +17,11 @@ variable "log_group_name" {
 variable "alb_target_group_arn" {
   type = string
 }
+
+variable "openai_api_key_arn" {
+  type = string
+}
+
+variable "ecr_repository_url" {
+  type = string
+}

@@ -18,12 +18,12 @@ resource "aws_ecs_cluster" "cluster" {
 
 resource "aws_iam_role" "ecs_task_execution_role" {
   name               = "${var.naming_prefix}-ecs-task-execution-role"
-  assume_role_policy = data.aws_iam_policy_document.task_assune_role_policy.json
+  assume_role_policy = data.aws_iam_policy_document.task_assume_role_policy.json
 }
 
 data "aws_iam_policy_document" "task_assume_role_policy" {
   statement {
-    actions = ["stst:AssumeRole"]
+    actions = ["sts:AssumeRole"]
 
     principals {
       type        = "Service"
@@ -32,18 +32,35 @@ data "aws_iam_policy_document" "task_assume_role_policy" {
   }
 }
 
+# Attach AmazonECSTaskExecutionRolePolicy
 resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   role       = aws_iam_role.ecs_task_execution_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-
 }
 
-# IAM Role for ECS Task
+# Custom policy for accessing Secrets Manager
+resource "aws_iam_policy" "ecs_secrets_access" {
+  name        = "${var.naming_prefix}-ecs-secrets-access"
+  description = "Allows ECS task to access Secrets Manager"
 
-resource "aws_iam_role" "ecs_task_role" {
-  name               = "${var.naming_prefix}-ecs-task-role"
-  assume_role_policy = data.aws_iam_policy_document.task_assume_role_policy.json
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect   = "Allow",
+        Action   = "secretsmanager:GetSecretValue",
+        Resource = var.openai_api_key_arn
+      }
+    ]
+  })
 }
+
+# Attach custom policy to ECS Task Execution Role
+resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_secrets_policy" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = aws_iam_policy.ecs_secrets_access.arn
+}
+
 
 ###############
 # ECS Service #
@@ -60,8 +77,8 @@ resource "aws_ecs_service" "service" {
 
   load_balancer {
     target_group_arn = var.alb_target_group_arn
-    container_name   = "app"
-    container_port   = 8080
+    container_name   = "frontend"
+    container_port   = 80
   }
 
   network_configuration {
@@ -123,7 +140,7 @@ resource "aws_appautoscaling_policy" "ecs_memory_policy" {
 }
 
 #######################
-# ECS TAsK DEFINITION #
+# ECS TASK DEFINITION #
 #######################
 
 resource "aws_ecs_task_definition" "task_definition" {
@@ -131,14 +148,14 @@ resource "aws_ecs_task_definition" "task_definition" {
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = 256
-  memory                   = 512
+  cpu                      = 512
+  memory                   = 1024
 
   container_definitions = jsonencode([
     # Backend Container Definition
     {
       name      = "backend"
-      image     = "${aws_ecr_repository.ecr.repository_url}:backend-latest"
+      image     = "${var.ecr_repository_url}:backend-latest"
       cpu       = 256
       memory    = 512
       essential = true
@@ -151,7 +168,7 @@ resource "aws_ecs_task_definition" "task_definition" {
       secrets = [
         {
           name      = "OPENAI_API_KEY" # The environment variable name in the container
-          valueFrom = aws_secretsmanager_secret.openai_api_key.arn
+          valueFrom = var.openai_api_key_arn
         }
       ],
       logConfiguration = {
@@ -166,7 +183,7 @@ resource "aws_ecs_task_definition" "task_definition" {
     # Frontend Container Definition
     {
       name      = "frontend"
-      image     = "${aws_ecr_repository.ecr.repository_url}:frontend-latest"
+      image     = "${var.ecr_repository_url}:frontend-latest"
       cpu       = 256
       memory    = 512
       essential = true
@@ -177,7 +194,7 @@ resource "aws_ecs_task_definition" "task_definition" {
         }
       ],
       environment = [
-        { name = "BACKEND_URL", value = "http://backend:8080" }
+        { name = "BACKEND_URL", value = "http://127.0.0.1:8080" }
       ],
       dependsOn = [
         {
@@ -196,3 +213,36 @@ resource "aws_ecs_task_definition" "task_definition" {
     }
   ])
 }
+
+# resource "aws_ecs_task_definition" "task_definition" {
+#   family                   = "${var.naming_prefix}-ecs-task"
+#   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+#   network_mode             = "awsvpc"
+#   requires_compatibilities = ["FARGATE"]
+#   cpu                      = 512
+#   memory                   = 1024
+
+#   container_definitions = jsonencode([
+#     {
+#       name      = "frontend"
+#       image     = "amazon/amazon-ecs-sample:latest" # Sample image
+#       cpu       = 512
+#       memory    = 1024
+#       essential = true
+#       portMappings = [
+#         {
+#           containerPort = 80
+#           protocol      = "tcp"
+#         }
+#       ],
+#       logConfiguration = {
+#         logDriver = "awslogs"
+#         options = {
+#           awslogs-group         = "${var.log_group_name}"
+#           awslogs-region        = "eu-west-2"
+#           awslogs-stream-prefix = "${var.naming_prefix}-frontend-log-stream"
+#         }
+#       }
+#     }
+#   ])
+# }
