@@ -5,6 +5,12 @@ provider "aws" {
 }
 
 terraform {
+  backend "s3" {
+    bucket = "nick-test-state-20250108152540296300000001"
+    key = "dev/terraform.tfstate"
+    region = "us-east-1"
+    encrypt = true
+  }
   required_providers {
     aws = {
       source  = "hashicorp/aws"
