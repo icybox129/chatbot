@@ -7,6 +7,9 @@ on:
     paths:
       - 'infrastructure/**'
 
+permissions:
+  actions: write  # Required for updating repository variables
+  
 jobs:
   deploy-infrastructure:
     name: Deploy Infrastructure
@@ -43,67 +46,41 @@ jobs:
           TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
         run: terraform apply -auto-approve -target=module.ecr.aws_ecr_repository.ecr
 
-      - name: Debug Terraform Output
+      - name: Retrieve and Update ECR Repo URL
         working-directory: infrastructure/environment/dev
-        run: |
-          # Retrieve the ECR URL directly
-          ecr_repo_url=$(terraform output -raw ecr_repository_url || echo "")
-          echo "Raw Terraform Output:"
-          echo "$ecr_repo_url"
-          echo "::remove-mask::$ecr_repo_url"
-          echo "DEBUG: Unmasked ECR URL: $ecr_repo_url"
-
-      - name: Clean and Validate ECR Repo URL
-        working-directory: infrastructure/environment/dev
+        env:
+          GH_TOKEN: ${{ secrets.GH_PA_TOKEN }}
         run: |
           set -e
-          # Retrieve the ECR URL
+          # Retrieve the ECR URL from Terraform output
           ecr_repo_url=$(terraform output -raw ecr_repository_url || echo "")
           
-          # Clean the value (remove newlines, carriage returns)
-          ecr_repo_url=$(echo "$ecr_repo_url" | tr -d '\r\n')
-          
-          # Debugging
-          echo "DEBUG: Cleaned ECR URL: $ecr_repo_url"
-
-          # Validate it is not empty
+          # Validate the output
           if [ -z "$ecr_repo_url" ]; then
-            echo "::error::ECR Repository URL is empty or invalid"
+            echo "::error::ECR Repository URL is empty or null"
             exit 1
           fi
+          
+          # Update the repository variable using GitHub API
+          curl -L \
+            -X PATCH \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.GH_PA_TOKEN }}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/${{ github.repository }}/actions/variables/ECR_REPO_URL \
+            -d "{\"name\":\"ECR_REPO_URL\",\"value\":\"$ecr_repo_url\"}"
+          
+          # Also set it as an environment variable for this job
+          echo "ECR_REPO_URL=$ecr_repo_url" >> $GITHUB_ENV
 
-          # Save to GitHub environment variable
-          echo "ecr_repo_url=$ecr_repo_url" >> $GITHUB_ENV
-
-      
-      - name: Debug Terraform Output
-        working-directory: infrastructure/environment/dev
+      - name: Debug ECR Repo URL
         run: |
-          set -e
-          terraform output -raw ecr_repository_url || echo "No output found"
-  
-      - name: Save ECR Repo URI as GitHub Actions Secret
-        uses: gliech/create-github-secret-action@v1
-        with:
-          name: ECR_REPO_URL
-          value: ${{ env.ecr_repo_url }}
-          pa_token: ${{ secrets.GH_PA_TOKEN }}
+          echo "DEBUG: Using ECR_REPO_URL: ${{ vars.ECR_REPO_URL }}"
 
-      - name: Output ECR Repo Secret for Debugging
-        run: |
-            echo "::remove-mask::${{ secrets.ECR_REPO_URL }}"
-            echo "DEBUG: ECR_REPO_URL is ${{ secrets.ECR_REPO_URL }}"
-  
-  
-
-
-  # # --------------------------------------------------
-  # # 3) Build and Push Docker Images
-  # # --------------------------------------------------
   # build-and-push:
   #   name: Build & Push Docker Images
   #   runs-on: ubuntu-latest
-  #   needs: get-ecr-uri
+  #   needs: deploy-infrastructure
   #   steps:
   #     - name: Checkout
   #       uses: actions/checkout@v3
@@ -118,57 +95,54 @@ jobs:
   #     - name: Docker Login to ECR
   #       run: |
   #         aws ecr get-login-password --region eu-west-2 \
-  #           | docker login --username AWS --password-stdin ${{ secrets.ECR_REPO_URL }}
+  #           | docker login --username AWS --password-stdin ${{ vars.ECR_REPO_URL }}
 
   #     - name: Build Backend Image
   #       run: |
   #         docker build -t chatbot-dev-chatbot:backend-latest -f Dockerfile.backend .
   #         docker tag chatbot-dev-chatbot:backend-latest \
-  #           ${{ secrets.ECR_REPO_URL }}:backend-latest
+  #           ${{ vars.ECR_REPO_URL }}:backend-latest
 
   #     - name: Push Backend Image
   #       run: |
-  #         docker push ${{ secrets.ECR_REPO_URL }}:backend-latest
+  #         docker push ${{ vars.ECR_REPO_URL }}:backend-latest
 
   #     - name: Build Frontend Image
   #       run: |
   #         docker build -t chatbot-dev-chatbot:frontend-latest -f Dockerfile.frontend .
   #         docker tag chatbot-dev-chatbot:frontend-latest \
-  #           ${{ secrets.ECR_REPO_URL }}:frontend-latest
+  #           ${{ vars.ECR_REPO_URL }}:frontend-latest
 
   #     - name: Push Frontend Image
   #       run: |
-  #         docker push ${{ secrets.ECR_REPO_URL }}:frontend-latest
+  #         docker push ${{ vars.ECR_REPO_URL }}:frontend-latest
 
-  # # --------------------------------------------------
-  # # 4) Deploy and Destroy Infrastructure (Terraform)
-  # # --------------------------------------------------
   # deploy-and-clean:
   #   name: Deploy and Clean Up Infrastructure
   #   runs-on: ubuntu-latest
-  #   needs: [build-and-push, create-ecr, get-ecr-uri] # Add create-ecr and get-ecr-uri here
+  #   needs: [build-and-push]
   #   steps:
   #     - name: Checkout
   #       uses: actions/checkout@v3
-  
+
   #     - name: Configure AWS Credentials
   #       uses: aws-actions/configure-aws-credentials@v2
   #       with:
   #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
   #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   #         aws-region: eu-west-2
-  
+
   #     - name: Set up Terraform
   #       uses: hashicorp/setup-terraform@v2
   #       with:
   #         terraform_version: 1.4.0
-  
+
   #     - name: Terraform Apply
   #       working-directory: infrastructure/environment/dev
   #       env:
   #         TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
   #       run: terraform apply -auto-approve
-  
+
   #     - name: Terraform Destroy
   #       if: always()  # Ensure destroy runs regardless of earlier failures
   #       working-directory: infrastructure/environment/dev
