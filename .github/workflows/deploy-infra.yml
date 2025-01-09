@@ -49,7 +49,7 @@ jobs:
       - name: Retrieve and Update ECR Repo URL
         working-directory: infrastructure/environment/dev
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_PA_TOKEN }}
         run: |
           set -e
           # Get the output in JSON format and parse with jq
