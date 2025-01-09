@@ -1,0 +1,148 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'infrastructure/**'
+
+permissions:
+  actions: write  # Required for updating repository variables
+  
+jobs:
+  deploy-infrastructure:
+    name: Deploy Infrastructure
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-2
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.10.2
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        working-directory: infrastructure/environment/dev
+        run: terraform init
+
+      - name: Terraform Plan (ECR only)
+        working-directory: infrastructure/environment/dev
+        env:
+          TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+        run: terraform plan -target=module.ecr.aws_ecr_repository.ecr
+
+      - name: Terraform Apply (ECR only)
+        working-directory: infrastructure/environment/dev
+        env:
+          TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+        run: terraform apply -auto-approve -target=module.ecr.aws_ecr_repository.ecr
+
+      - name: Retrieve and Update ECR Repo URL
+        working-directory: infrastructure/environment/dev
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PA_TOKEN }}
+        run: |
+          set -e
+      
+          # Retrieve the ECR URL from Terraform output
+          ecr_repo_url=$(terraform output -raw ecr_repository_url || echo "")
+      
+          # Validate the output
+          if [ -z "$ecr_repo_url" ]; then
+            echo "::error::ECR Repository URL is empty or null"
+            exit 1
+          fi
+      
+          # Update GitHub repository variable using GitHub CLI
+          gh variable set ECR_REPO_URL --body "$ecr_repo_url"
+      
+          # Debug output (optional, for logs only, and hides the value for security)
+          echo "::add-mask::$ecr_repo_url"
+          echo "Successfully saved ECR_REPO_URL to repository variables."
+      
+      - name: Debug ECR Repo URL
+        run: |
+          echo "DEBUG: Using ECR_REPO_URL: ${{ vars.ECR_REPO_URL }}"
+
+  build-and-push:
+    name: Build & Push Docker Images
+    runs-on: ubuntu-latest
+    needs: deploy-infrastructure
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-2
+
+      - name: Docker Login to ECR
+        run: |
+          aws ecr get-login-password --region eu-west-2 \
+            | docker login --username AWS --password-stdin ${{ vars.ECR_REPO_URL }}
+
+      - name: Build Backend Image
+        run: |
+          docker build -t chatbot-dev-chatbot:backend-latest -f Dockerfile.backend .
+          docker tag chatbot-dev-chatbot:backend-latest \
+            ${{ vars.ECR_REPO_URL }}:backend-latest
+
+      - name: Push Backend Image
+        run: |
+          docker push ${{ vars.ECR_REPO_URL }}:backend-latest
+
+      - name: Build Frontend Image
+        run: |
+          docker build -t chatbot-dev-chatbot:frontend-latest -f Dockerfile.frontend .
+          docker tag chatbot-dev-chatbot:frontend-latest \
+            ${{ vars.ECR_REPO_URL }}:frontend-latest
+
+      - name: Push Frontend Image
+        run: |
+          docker push ${{ vars.ECR_REPO_URL }}:frontend-latest
+
+  # deploy-and-clean:
+  #   name: Deploy and Clean Up Infrastructure
+  #   runs-on: ubuntu-latest
+  #   needs: [build-and-push]
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v3
+
+  #     - name: Configure AWS Credentials
+  #       uses: aws-actions/configure-aws-credentials@v2
+  #       with:
+  #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #         aws-region: eu-west-2
+
+  #     - name: Set up Terraform
+  #       uses: hashicorp/setup-terraform@v2
+  #       with:
+  #         terraform_version: 1.4.0
+
+  #     - name: Terraform Apply
+  #       working-directory: infrastructure/environment/dev
+  #       env:
+  #         TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+  #       run: terraform apply -auto-approve
+
+  #     - name: Terraform Destroy
+  #       if: always()  # Ensure destroy runs regardless of earlier failures
+  #       working-directory: infrastructure/environment/dev
+  #       env:
+  #         TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+  #       run: terraform destroy -auto-approve
