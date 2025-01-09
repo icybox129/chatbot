@@ -82,6 +82,13 @@ jobs:
           value: ${{ env.ecr_repo_url }}
           pa_token: ${{ secrets.GH_PA_TOKEN }}
 
+      - name: Output ECR Repo Secret for Debugging
+        run: |
+            echo "::remove-mask::${{ secrets.ECR_REPO_URL }}"
+            echo "DEBUG: ECR_REPO_URL is ${{ secrets.ECR_REPO_URL }}"
+  
+  
+
 
   # # --------------------------------------------------
   # # 3) Build and Push Docker Images
