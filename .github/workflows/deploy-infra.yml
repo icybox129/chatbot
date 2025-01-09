@@ -63,7 +63,6 @@ jobs:
           # Set GitHub environment variable
           echo "ecr_repo_url=$ecr_repo_url" >> $GITHUB_ENV
 
-
       - name: Save ECR Repo URI as GitHub Actions Secret
         if: env.ecr_repo_url != ''
         uses: gliech/create-github-secret-action@v1
