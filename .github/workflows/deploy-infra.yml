@@ -1,0 +1,154 @@
+name: Deploy Infrastructure
+
+on:
+  workflow_dispatch:  # Manual trigger
+
+permissions:
+  id-token: write
+  contents: read
+  actions: write
+
+jobs:
+  # --------------------------------------------------
+  # 1) Create ECR Repo (Terraform)
+  # --------------------------------------------------
+  create-ecr:
+    name: Create ECR (Terraform)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-2
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.4.0
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan (ECR only)
+        env:
+          TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+        run: terraform plan -target=aws_ecr_repository.ecr
+
+      - name: Terraform Apply (ECR only)
+        env:
+          TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+        run: terraform apply -auto-approve -target=aws_ecr_repository.ecr
+
+  # --------------------------------------------------
+  # 2) Get ECR Repo URI and Save as a GitHub Actions Secret
+  # --------------------------------------------------
+  get-ecr-uri:
+    name: Get ECR URI from Terraform
+    runs-on: ubuntu-latest
+    needs: create-ecr
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-2
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.4.0
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Get ECR Repo URI
+        id: get-ecr
+        run: |
+          echo "ecr_repo_url=$(terraform output -raw ecr_repository_url)" >> $GITHUB_ENV
+
+      - name: Save ECR Repo URI as GitHub Actions Secret
+        uses: gliech/create-github-secret-action@v1
+        with:
+          name: ECR_REPO_URL
+          value: ${{ env.ecr_repo_url }}
+          pa_token: ${{ secrets.GH_PA_TOKEN }}
+
+  # --------------------------------------------------
+  # 3) Build and Push Docker Images
+  # --------------------------------------------------
+  build-and-push:
+    name: Build & Push Docker Images
+    runs-on: ubuntu-latest
+    needs: get-ecr-uri
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-2
+
+      - name: Docker Login to ECR
+        run: |
+          aws ecr get-login-password --region eu-west-2 \
+            | docker login --username AWS --password-stdin ${{ secrets.ECR_REPO_URL }}
+
+      - name: Build Backend Image
+        run: |
+          docker build -t chatbot-dev-chatbot:backend-latest -f Dockerfile.backend .
+          docker tag chatbot-dev-chatbot:backend-latest \
+            ${{ secrets.ECR_REPO_URL }}:backend-latest
+
+      - name: Push Backend Image
+        run: |
+          docker push ${{ secrets.ECR_REPO_URL }}:backend-latest
+
+      - name: Build Frontend Image
+        run: |
+          docker build -t chatbot-dev-chatbot:frontend-latest -f Dockerfile.frontend .
+          docker tag chatbot-dev-chatbot:frontend-latest \
+            ${{ secrets.ECR_REPO_URL }}:frontend-latest
+
+      - name: Push Frontend Image
+        run: |
+          docker push ${{ secrets.ECR_REPO_URL }}:frontend-latest
+
+  # --------------------------------------------------
+  # 4) Deploy Remaining Infrastructure (Terraform)
+  # --------------------------------------------------
+  deploy-infra:
+    name: Deploy the rest of the Terraform infrastructure
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-2
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.4.0
+
+      - name: Terraform Apply
+        env:
+          TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+        run: terraform apply -auto-approve
