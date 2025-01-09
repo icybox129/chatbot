@@ -53,22 +53,25 @@ jobs:
         run: |
           set -e
       
-          # Retrieve the ECR URL from Terraform output
-          ecr_repo_url=$(terraform output -raw ecr_repository_url || echo "")
+          # Retrieve the raw Terraform output
+          ecr_repo_url=$(terraform output -raw ecr_repository_url 2>/dev/null || echo "")
       
           # Validate the output
-          if [ -z "$ecr_repo_url" ]; then
-            echo "::error::ECR Repository URL is empty or null"
+          if [ -z "$ecr_repo_url" ] || [[ "$ecr_repo_url" == *"debug"* ]]; then
+            echo "::error::ECR Repository URL is empty, null, or invalid"
             exit 1
           fi
       
           # Update GitHub repository variable using GitHub CLI
           gh variable set ECR_REPO_URL --body "$ecr_repo_url"
       
-          # Debug output (optional, for logs only, and hides the value for security)
+          # Save it for the current job
+          echo "ECR_REPO_URL=$ecr_repo_url" >> $GITHUB_ENV
+      
+          # Debug output (Optional)
           echo "::add-mask::$ecr_repo_url"
           echo "Successfully saved ECR_REPO_URL to repository variables."
-      
+        
       - name: Debug ECR Repo URL
         run: |
           echo "DEBUG: Using ECR_REPO_URL: ${{ vars.ECR_REPO_URL }}"
