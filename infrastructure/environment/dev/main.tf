@@ -4,7 +4,14 @@ provider "aws" {
   # secret_key = var.AWS_SECRET_KEY
 }
 
-terraform {
+
+terraform { 
+  backend "s3" {
+    bucket = "terraform-state-20250109160836745100000001"
+    key = "dev/terraform.tfstate"
+    region = "eu-west-2"
+    encrypt = true
+  }
   required_providers {
     aws = {
       source  = "hashicorp/aws"
