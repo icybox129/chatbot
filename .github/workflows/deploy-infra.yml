@@ -61,8 +61,8 @@ jobs:
             exit 1
           fi
           
-          # Update using GitHub CLI
-          echo "$ecr_repo_url" | gh variable set ECR_REPO_URL --body-file -
+          # Update using GitHub CLI with correct flag
+          gh variable set ECR_REPO_URL --body "$ecr_repo_url"
           
           # Set for current job
           echo "ECR_REPO_URL=$ecr_repo_url" >> $GITHUB_ENV
