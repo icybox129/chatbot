@@ -47,15 +47,26 @@ jobs:
         working-directory: infrastructure/environment/dev
         run: |
           set -e
-          # Get ECR URL with error handling
-          ecr_repo_url=$(terraform output -raw ecr_repository_url)
-          if [ -z "$ecr_repo_url" ]; then
-            echo "::error::ECR Repository URL is empty"
+          
+          # Debug terraform output
+          echo "DEBUG: Raw terraform output"
+          terraform output
+          
+          # Get and clean ECR URL
+          ecr_repo_url=$(terraform output -raw ecr_repository_url | tr -d '\n' | tr -d ' ')
+          
+          # Validate URL format
+          if [[ ! "$ecr_repo_url" =~ ^[0-9]+\.dkr\.ecr\.[a-z0-9-]+\.amazonaws\.com ]]; then
+            echo "::error::Invalid ECR URL format: $ecr_repo_url"
             exit 1
           fi
-          echo "ecr_repo_url=$ecr_repo_url" >> $GITHUB_ENV
+          
+          # Set GitHub env var with proper escaping
+          echo "ecr_repo_url=${ecr_repo_url}" >> "$GITHUB_ENV"
+          echo "DEBUG: Set ECR URL: ${ecr_repo_url}"
 
       - name: Save ECR Repo URI as GitHub Actions Secret
+        if: env.ecr_repo_url != ''
         uses: gliech/create-github-secret-action@v1
         with:
           name: ECR_REPO_URL
