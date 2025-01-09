@@ -48,17 +48,11 @@ jobs:
         run: |
           set -e
           
-          # Get ECR URL from terraform output
-          if ! ecr_repo_url=$(terraform output -json | jq -r '.ecr_repository_url.value'); then
-            echo "::error::Failed to get ECR repository URL"
-            exit 1
-          fi
+          # Retrieve ECR URL as a plain string
+          ecr_repo_url=$(terraform output -no-color -raw ecr_repository_url || echo "")
           
-          # Clean the URL
-          ecr_repo_url=$(echo "$ecr_repo_url" | tr -d '"')
-          
-          # Basic validation
-          if [ -z "$ecr_repo_url" ] || [ "$ecr_repo_url" = "null" ]; then
+          # Validate the output
+          if [ -z "$ecr_repo_url" ]; then
             echo "::error::ECR Repository URL is empty or null"
             exit 1
           fi
@@ -66,12 +60,9 @@ jobs:
           # Debug output
           echo "DEBUG: Retrieved ECR URL: $ecr_repo_url"
           
-          # Set GitHub env var
-          {
-            echo "ecr_repo_url<<EOF"
-            echo "$ecr_repo_url"
-            echo "EOF"
-          } >> "$GITHUB_ENV"
+          # Set GitHub environment variable
+          echo "ecr_repo_url=$ecr_repo_url" >> $GITHUB_ENV
+
 
       - name: Save ECR Repo URI as GitHub Actions Secret
         if: env.ecr_repo_url != ''
