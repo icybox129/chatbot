@@ -114,8 +114,8 @@ jobs:
         run: |
           docker push ${{ vars.ECR_REPO_URL }}:frontend-latest
 
-  deploy-and-clean:
-    name: Deploy and Clean Up Infrastructure
+  deploy-remaining:
+    name: Deploy Remaining Infrastructure
     runs-on: ubuntu-latest
     needs: [build-and-push]
     steps:
@@ -133,6 +133,10 @@ jobs:
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.4.0
+    
+      - name: Terraform Init
+        working-directory: infrastructure/environment/dev
+        run: terraform init
 
       - name: Terraform Apply
         working-directory: infrastructure/environment/dev
