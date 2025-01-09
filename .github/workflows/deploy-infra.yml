@@ -43,33 +43,45 @@ jobs:
           TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
         run: terraform apply -auto-approve -target=module.ecr.aws_ecr_repository.ecr
 
-      - name: Get ECR Repo URL
+      - name: Debug Terraform Output
+        working-directory: infrastructure/environment/dev
+        run: |
+          # Retrieve the ECR URL directly
+          ecr_repo_url=$(terraform output -raw ecr_repository_url || echo "")
+          echo "Raw Terraform Output:"
+          echo "$ecr_repo_url"
+          echo "::remove-mask::$ecr_repo_url"
+          echo "DEBUG: Unmasked ECR URL: $ecr_repo_url"
+
+      - name: Clean and Validate ECR Repo URL
         working-directory: infrastructure/environment/dev
         run: |
           set -e
+          # Retrieve the ECR URL
+          ecr_repo_url=$(terraform output -raw ecr_repository_url || echo "")
           
-          # Retrieve ECR URL as a plain string
-          ecr_repo_url=$(terraform output -no-color -raw ecr_repository_url || echo "")
+          # Clean the value (remove newlines, carriage returns)
+          ecr_repo_url=$(echo "$ecr_repo_url" | tr -d '\r\n')
           
-          # Validate the output
+          # Debugging
+          echo "DEBUG: Cleaned ECR URL: $ecr_repo_url"
+
+          # Validate it is not empty
           if [ -z "$ecr_repo_url" ]; then
-            echo "::error::ECR Repository URL is empty or null"
+            echo "::error::ECR Repository URL is empty or invalid"
             exit 1
           fi
-          
-          # Debug output
-          echo "DEBUG: Retrieved ECR URL: $ecr_repo_url"
-          
-          # Set GitHub environment variable
+
+          # Save to GitHub environment variable
           echo "ecr_repo_url=$ecr_repo_url" >> $GITHUB_ENV
 
       - name: Save ECR Repo URI as GitHub Actions Secret
-        if: env.ecr_repo_url != ''
         uses: gliech/create-github-secret-action@v1
         with:
           name: ECR_REPO_URL
           value: ${{ env.ecr_repo_url }}
           pa_token: ${{ secrets.GH_PA_TOKEN }}
+
 
   # # --------------------------------------------------
   # # 3) Build and Push Docker Images
