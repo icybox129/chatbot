@@ -77,18 +77,27 @@ jobs:
         working-directory: infrastructure/environment/dev
         run: terraform init
 
-      - name: Get ECR Repo URI
+      - name: Get ECR Repo URL
         working-directory: infrastructure/environment/dev
-        id: get-ecr
         run: |
           set -e
-          ecr_repo_url=$(terraform output -no-color -raw ecr_repository_url || echo "")
+          # Debug: Show terraform outputs
+          echo "DEBUG: Showing terraform outputs"
+          terraform output
+          
+          # Get ECR repo URL with better error handling
+          ecr_repo_url=$(terraform output -no-color -json | jq -r '.ecr_repository_url.value // ""')
+          echo "DEBUG: ECR repo URL: $ecr_repo_url"
+          
           if [ -z "$ecr_repo_url" ]; then
-            echo "ECR Repository URL is empty. Skipping save step."
-            exit 0
+            echo "::warning::ECR Repository URL is empty. This might indicate an infrastructure provisioning issue."
+            echo "DEBUG: Terraform state list:"
+            terraform state list
+            exit 1
           fi
+          
           echo "ecr_repo_url=$ecr_repo_url" >> $GITHUB_ENV
-
+          echo "Successfully saved ECR repo URL to GITHUB_ENV"
 
       - name: Save ECR Repo URI as GitHub Actions Secret
         uses: gliech/create-github-secret-action@v1
