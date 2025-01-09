@@ -1,7 +1,12 @@
 name: Deploy Infrastructure
 
+# on:
+#   workflow_dispatch:  # Manual trigger
+
 on:
-  workflow_dispatch:  # Manual trigger
+  push:
+    branches:
+      - feature/workflows
 
 permissions:
   id-token: write
