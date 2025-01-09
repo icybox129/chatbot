@@ -52,8 +52,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_PA_TOKEN }}
         run: |
           set -e
-          # Retrieve the ECR URL from Terraform output
-          ecr_repo_url=$(terraform output -raw ecr_repository_url || echo "")
+          # Retrieve the ECR URL from Terraform output and clean it
+          ecr_repo_url=$(terraform output -raw ecr_repository_url | head -n 1 | tr -d '\n')
           
           # Validate the output
           if [ -z "$ecr_repo_url" ]; then
@@ -61,7 +61,10 @@ jobs:
             exit 1
           fi
           
-          # Update using GitHub CLI with correct flag
+          # Debug print the clean URL
+          echo "Clean ECR URL: $ecr_repo_url"
+          
+          # Update using GitHub CLI
           gh variable set ECR_REPO_URL --body "$ecr_repo_url"
           
           # Set for current job
