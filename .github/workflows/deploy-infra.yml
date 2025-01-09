@@ -42,12 +42,12 @@ jobs:
       - name: Terraform Plan (ECR only)
         env:
           TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-        run: terraform plan -target=aws_ecr_repository.ecr
+        run: terraform plan -target=module.ecr.aws_ecr_repository.ecr
 
       - name: Terraform Apply (ECR only)
         env:
           TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-        run: terraform apply -auto-approve -target=aws_ecr_repository.ecr
+        run: terraform apply -auto-approve -target=module.ecr.aws_ecr_repository.ecr
 
   # --------------------------------------------------
   # 2) Get ECR Repo URI and Save as a GitHub Actions Secret
