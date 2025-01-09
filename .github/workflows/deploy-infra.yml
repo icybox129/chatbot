@@ -1,7 +1,10 @@
-name: Deploy and Clean Up Infrastructure
+name: Deploy
 
 on:
   push:
+
+# on:
+#     workflow_dispatch:
 
 permissions:
   id-token: write
