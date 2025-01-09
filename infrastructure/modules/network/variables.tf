@@ -5,5 +5,11 @@ variable "naming_prefix" {
 variable "vpc_cidr_block" {
   type        = string
   description = "Base CIDR Block for the VPC"
-  default     = "10.0.0.0/16"
+  default     = "10.10.0.0/16"
+}
+
+variable "az_count" {
+  type        = number
+  description = "Number of Availability Zones to use"
+  default     = 2
 }

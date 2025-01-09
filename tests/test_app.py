@@ -24,4 +24,3 @@ def test_new_conversation(client):
     """Test starting a new conversation"""
     response = client.post('/new_conversation')
     assert response.status_code == 200
-
