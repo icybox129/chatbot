@@ -5,6 +5,8 @@ name: Deploy Infrastructure
 
 on:
     push:
+        branches:
+        - feature/workflow
 
 permissions:
   id-token: write

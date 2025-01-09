@@ -1,7 +1,12 @@
 name: Destroy Infrastructure
 
+# on:
+#   workflow_dispatch:  # Manual trigger
+
 on:
-  workflow_dispatch:  # Manual trigger
+    push:
+        branches:
+        - feature/workflow
 
 permissions:
   id-token: write
