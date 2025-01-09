@@ -75,6 +75,13 @@ jobs:
           # Save to GitHub environment variable
           echo "ecr_repo_url=$ecr_repo_url" >> $GITHUB_ENV
 
+      
+      - name: Debug Terraform Output
+        working-directory: infrastructure/environment/dev
+        run: |
+          set -e
+          terraform output -raw ecr_repository_url || echo "No output found"
+  
       - name: Save ECR Repo URI as GitHub Actions Secret
         uses: gliech/create-github-secret-action@v1
         with:
