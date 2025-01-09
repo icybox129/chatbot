@@ -81,7 +81,8 @@ jobs:
         working-directory: infrastructure/environment/dev
         id: get-ecr
         run: |
-          echo "ecr_repo_url=$(terraform output -raw ecr_repository_url)" >> $GITHUB_ENV
+          ecr_repo_url=$(terraform output -no-color -raw ecr_repository_url)
+          echo "ecr_repo_url=$ecr_repo_url" >> $GITHUB_ENV
 
       - name: Save ECR Repo URI as GitHub Actions Secret
         uses: gliech/create-github-secret-action@v1
