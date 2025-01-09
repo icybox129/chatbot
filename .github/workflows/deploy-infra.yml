@@ -4,7 +4,7 @@ name: Deploy Infrastructure
 #   workflow_dispatch:  # Manual trigger
 
 on:
-  push:
+  pull_request:
     branches:
       - feature/workflows
 
