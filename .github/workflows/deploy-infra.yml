@@ -52,18 +52,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_PA_TOKEN }}
         run: |
           set -e
-          # Get the output in JSON format and parse with jq
-          ecr_repo_url=$(terraform output -json | jq -r '.ecr_repository_url.value')
+          # Retrieve the ECR URL from Terraform output
+          ecr_repo_url=$(terraform output -raw ecr_repository_url || echo "")
           
           # Validate the output
-          if [ -z "$ecr_repo_url" ] || [ "$ecr_repo_url" = "null" ]; then
+          if [ -z "$ecr_repo_url" ]; then
             echo "::error::ECR Repository URL is empty or null"
             exit 1
           fi
           
-          echo "Retrieved URL: $ecr_repo_url"
-          
-          # Update using GitHub CLI
+          # Update using GitHub CLI with correct flag
           gh variable set ECR_REPO_URL --body "$ecr_repo_url"
           
           # Set for current job
