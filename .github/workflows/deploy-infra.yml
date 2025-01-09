@@ -1,10 +1,7 @@
-name: Deploy Infrastructure
-
-# on:
-#   workflow_dispatch:  # Manual trigger
+name: Deploy and Clean Up Infrastructure
 
 on:
-    push:
+  push:
 
 permissions:
   id-token: write
@@ -135,10 +132,10 @@ jobs:
           docker push ${{ secrets.ECR_REPO_URL }}:frontend-latest
 
   # --------------------------------------------------
-  # 4) Deploy Remaining Infrastructure (Terraform)
+  # 4) Deploy and Destroy Infrastructure (Terraform)
   # --------------------------------------------------
-  deploy-infra:
-    name: Deploy the rest of the Terraform infrastructure
+  deploy-and-clean:
+    name: Deploy and Clean Up Infrastructure
     runs-on: ubuntu-latest
     needs: build-and-push
     steps:
@@ -162,3 +159,10 @@ jobs:
         env:
           TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
         run: terraform apply -auto-approve
+
+      - name: Terraform Destroy
+        if: always()  # Run even if earlier steps fail
+        working-directory: infrastructure/environment/dev
+        env:
+          TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+        run: terraform destroy -auto-approve
