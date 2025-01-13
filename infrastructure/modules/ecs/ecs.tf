@@ -151,6 +151,15 @@ resource "aws_ecs_task_definition" "task_definition" {
   cpu                      = 512
   memory                   = 1024
 
+    volume {
+    name = "chroma-efs-volume"
+    efs_volume_configuration {
+      file_system_id = var.chroma_efs_id
+      root_directory = "/"
+      transit_encryption = "ENABLED"
+    }
+  }
+
   container_definitions = jsonencode([
     # Backend Container Definition
     {
@@ -178,7 +187,13 @@ resource "aws_ecs_task_definition" "task_definition" {
           awslogs-region        = "eu-west-2"
           awslogs-stream-prefix = "${var.naming_prefix}-backend-log-stream"
         }
-      }
+      },
+      "mountPoints": [
+        {
+          "sourceVolume"  : "chroma-efs-volume",
+          "containerPath" : "/app/data/chroma"
+        }
+      ]
     },
     # Frontend Container Definition
     {
@@ -214,35 +229,67 @@ resource "aws_ecs_task_definition" "task_definition" {
   ])
 }
 
-# resource "aws_ecs_task_definition" "task_definition" {
-#   family                   = "${var.naming_prefix}-ecs-task"
-#   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
-#   network_mode             = "awsvpc"
-#   requires_compatibilities = ["FARGATE"]
-#   cpu                      = 512
-#   memory                   = 1024
+resource "aws_iam_role_policy" "efs_sync_s3_policy" {
+  name   = "${var.naming_prefix}-efs-sync-s3-policy"
+  role   = aws_iam_role.ecs_task_execution_role.name
 
-#   container_definitions = jsonencode([
-#     {
-#       name      = "frontend"
-#       image     = "amazon/amazon-ecs-sample:latest" # Sample image
-#       cpu       = 512
-#       memory    = 1024
-#       essential = true
-#       portMappings = [
-#         {
-#           containerPort = 80
-#           protocol      = "tcp"
-#         }
-#       ],
-#       logConfiguration = {
-#         logDriver = "awslogs"
-#         options = {
-#           awslogs-group         = "${var.log_group_name}"
-#           awslogs-region        = "eu-west-2"
-#           awslogs-stream-prefix = "${var.naming_prefix}-frontend-log-stream"
-#         }
-#       }
-#     }
-#   ])
-# }
+  policy = data.aws_iam_policy_document.efs_sync_s3_policy.json
+}
+
+data "aws_iam_policy_document" "efs_sync_s3_policy" {
+  statement {
+    actions = [
+      "s3:GetObject",
+      "s3:ListBucket"
+    ]
+    resources = [
+      "arn:aws:s3:::nick-terraform-test-docs",
+      "arn:aws:s3:::nick-terraform-test-docs/*"
+    ]
+  }
+}
+
+resource "aws_ecs_task_definition" "efs_sync_task" {
+  family                   = "${var.naming_prefix}-efs-sync-task"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = 256
+  memory                   = 512
+  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_execution_role.arn
+  
+  volume {
+    name = "chroma-efs-volume"
+    efs_volume_configuration {
+      file_system_id      = var.chroma_efs_id
+      root_directory      = "/"
+      transit_encryption  = "ENABLED"
+    }
+  }
+
+  container_definitions = jsonencode([
+    {
+      "name": "efs-sync",
+      "image": "amazon/aws-cli:latest",
+      "essential": true,
+      "entryPoint": ["sh", "-c"],
+      "command": [
+        "echo 'Syncing S3 to EFS...' && aws s3 sync s3://nick-terraform-test-docs/data/chroma /app/data/chroma && echo 'S3 -> EFS Sync completed.'"
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group":         "${var.log_group_name}",
+          "awslogs-region":        "eu-west-2",
+          "awslogs-stream-prefix": "${var.naming_prefix}-efs-sync"
+        }
+      },
+      "mountPoints": [
+        {
+          "sourceVolume": "chroma-efs-volume",
+          "containerPath": "/app/data/chroma"
+        }
+      ]
+    }
+  ])
+}
