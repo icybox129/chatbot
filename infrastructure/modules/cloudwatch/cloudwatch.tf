@@ -51,5 +51,5 @@ data "aws_iam_policy_document" "eventbridge_invoke_ecs_assume" {
 
 resource "aws_iam_role_policy_attachment" "eventbridge_invoke_ecs_policy" {
   role       = aws_iam_role.eventbridge_invoke_ecs.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSEventsRole"
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceEventsRole"
 }
