@@ -31,6 +31,9 @@ module "alb" {
 module "cloudwatch" {
   source        = "../../modules/cloudwatch"
   naming_prefix = local.naming_prefix
+  private_subnet_ids     = module.network.private_subnet_ids
+  cluster_arn = module.ecs.cluster_arn
+  efs_sync_task_arn = module.ecs.efs_sync_task_arn
 }
 
 # module "ec2" {
@@ -54,6 +57,7 @@ module "ecs" {
   alb_target_group_arn   = module.alb.alb_target_group_arn
   openai_api_key_arn     = module.secrets_manager.openai_api_key_arn
   ecr_repository_url     = module.ecr.ecr_repository_url
+  chroma_efs_id          = module.efs.chroma_efs_id
 }
 
 module "network" {
@@ -71,4 +75,11 @@ module "sg" {
   source        = "../../modules/sg"
   naming_prefix = local.naming_prefix
   vpc_id        = module.network.vpc_id
+}
+
+module "efs" {
+  source = "../../modules/efs"
+  naming_prefix  = local.naming_prefix
+  private_subnet_ids     = module.network.private_subnet_ids
+  efs_sg = module.sg.efs_sg
 }
