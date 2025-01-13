@@ -34,6 +34,7 @@ module "cloudwatch" {
   private_subnet_ids     = module.network.private_subnet_ids
   cluster_arn = module.ecs.cluster_arn
   efs_sync_task_arn = module.ecs.efs_sync_task_arn
+  ecs_container_instance = module.sg.ecs_container_instance
 }
 
 # module "ec2" {
