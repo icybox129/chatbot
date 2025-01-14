@@ -67,6 +67,24 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_secrets_polic
   policy_arn = aws_iam_policy.ecs_secrets_access.arn
 }
 
+# Task Role for container permissions
+resource "aws_iam_role" "ecs_task_role" {
+  name = "${var.naming_prefix}-ecs-task-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
 
 ###############
 # ECS Service #
@@ -153,6 +171,7 @@ resource "aws_appautoscaling_policy" "ecs_memory_policy" {
 resource "aws_ecs_task_definition" "task_definition" {
   family                   = "${var.naming_prefix}-ecs-task"
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_role.arn
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
   cpu                      = 512
@@ -263,7 +282,7 @@ resource "aws_ecs_task_definition" "efs_sync_task" {
   cpu                      = 256
   memory                   = 512
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
-  task_role_arn            = aws_iam_role.ecs_task_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_role.arn
   
   volume {
     name = "chroma-efs-volume"
