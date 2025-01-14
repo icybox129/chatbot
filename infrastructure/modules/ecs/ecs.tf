@@ -257,8 +257,7 @@ resource "aws_ecs_task_definition" "task_definition" {
 
 resource "aws_iam_role_policy" "efs_sync_s3_policy" {
   name   = "${var.naming_prefix}-efs-sync-s3-policy"
-  role   = aws_iam_role.ecs_task_execution_role.name
-
+  role   = aws_iam_role.ecs_task_role.name
   policy = data.aws_iam_policy_document.efs_sync_s3_policy.json
 }
 
