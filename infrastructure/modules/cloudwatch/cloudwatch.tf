@@ -2,8 +2,6 @@
 # CLOUDWATCH LOG GROUP #
 ########################
 
-# Create log group for our service
-
 resource "aws_cloudwatch_log_group" "log_group" {
   name              = "/${lower(var.naming_prefix)}/ecs-task"
   retention_in_days = 7
@@ -27,12 +25,9 @@ resource "aws_cloudwatch_event_target" "efs_sync_schedule_target" {
       subnets         = var.private_subnet_ids
       security_groups = var.ecs_container_instance
     }
-    # If your task requires VPC endpoints or NAT gateway to reach S3,
-    # ensure those subnets have the correct route to the internet or an S3 VPC endpoint.
   }
 }
 
-# Give EventBridge permission to run tasks in your cluster
 resource "aws_iam_role" "eventbridge_invoke_ecs" {
   name = "${var.naming_prefix}-eventbridge-ecs-invoke"
 
