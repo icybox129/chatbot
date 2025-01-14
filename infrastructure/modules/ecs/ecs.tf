@@ -299,7 +299,7 @@ resource "aws_ecs_task_definition" "efs_sync_task" {
       "essential": true,
       "entryPoint": ["sh", "-c"],
       "command": [
-        "echo 'Syncing S3 to EFS...' && aws s3 sync s3://nick-terraform-test-docs/data/chroma /app/data/chroma && echo 'S3 -> EFS Sync completed.'"
+        "cd / && echo 'Syncing S3 to EFS...' && aws s3 sync s3://nick-terraform-test-docs/data/chroma /app/data/chroma && echo 'S3 -> EFS Sync completed.'"
       ],
       "logConfiguration": {
         "logDriver": "awslogs",
@@ -317,52 +317,4 @@ resource "aws_ecs_task_definition" "efs_sync_task" {
       ]
     }
   ])
-}
-
-// ...existing code...
-
-resource "aws_ecs_task_definition" "efs_check_task" {
-  family                   = "efs-check"
-  requires_compatibilities = ["FARGATE"]
-  network_mode            = "awsvpc"
-  cpu                     = 256
-  memory                  = 512
-  execution_role_arn      = aws_iam_role.ecs_task_execution_role.arn
-  task_role_arn           = aws_iam_role.ecs_task_role.arn
-
-  container_definitions = jsonencode([
-    {
-      name      = "efs-check"
-      image     = "amazon/aws-cli:latest"
-      essential = true
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          "awslogs-group"         = "/ecs/efs-check"
-          "awslogs-region"        = "eu-west-2"
-          "awslogs-stream-prefix" = "efs"
-        }
-      }
-      command = [
-        "sh", 
-        "-c", 
-        "echo 'EFS Contents:' && ls -la /app/data/chroma && echo 'Disk Usage:' && df -h"
-      ]
-      mountPoints = [
-        {
-          sourceVolume  = "chroma-efs-volume"
-          containerPath = "/app/data/chroma"
-        }
-      ]
-    }
-  ])
-
-  volume {
-    name = "chroma-efs-volume"
-    efs_volume_configuration {
-      file_system_id = var.chroma_efs_id
-      root_directory = "/"
-      transit_encryption = "ENABLED"
-    }
-  }
 }
