@@ -16,4 +16,4 @@ COPY preprocessing /app/preprocessing
 EXPOSE 8080
 
 # Run gunicorn to serve the Flask app
-CMD ["gunicorn", "--log-level", "debug", "-b", "0.0.0.0:8080", "app:app"]
+CMD ["gunicorn", "-b", "0.0.0.0:8080", "app:app"]
