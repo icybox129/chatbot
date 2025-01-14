@@ -38,6 +38,12 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+# Attach the AmazonSSMManagedInstanceCore policy to the ECS Task Execution Role
+resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_ssm" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 # Custom policy for accessing Secrets Manager
 resource "aws_iam_policy" "ecs_secrets_access" {
   name        = "${var.naming_prefix}-ecs-secrets-access"
@@ -74,6 +80,7 @@ resource "aws_ecs_service" "service" {
   deployment_minimum_healthy_percent = 50
   deployment_maximum_percent         = 100
   launch_type                        = "FARGATE"
+  enable_execute_command             = true
 
   load_balancer {
     target_group_arn = var.alb_target_group_arn
