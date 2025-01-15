@@ -96,7 +96,7 @@ resource "aws_ecs_service" "service" {
   task_definition                    = aws_ecs_task_definition.task_definition.arn
   desired_count                      = 1
   deployment_minimum_healthy_percent = 50
-  deployment_maximum_percent         = 100
+  deployment_maximum_percent         = 200
   launch_type                        = "FARGATE"
   enable_execute_command             = true
   force_new_deployment               = true
