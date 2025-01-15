@@ -318,3 +318,17 @@ resource "aws_ecs_task_definition" "efs_sync_task" {
     }
   ])
 }
+
+resource "null_resource" "run_efs_sync_task" {
+  provisioner "local-exec" {
+    command = <<EOT
+      aws ecs run-task \
+        --cluster ${aws_ecs_cluster.cluster.name} \
+        --task-definition ${aws_ecs_task_definition.efs_sync_task.family} \
+        --launch-type FARGATE \
+        --network-configuration "awsvpcConfiguration={subnets=[${join(",", var.private_subnet_ids)}],securityGroups=[${join(",", var.ecs_container_instance)}],assignPublicIp=DISABLED}"
+    EOT
+  }
+
+  depends_on = [aws_ecs_task_definition.efs_sync_task]
+}
