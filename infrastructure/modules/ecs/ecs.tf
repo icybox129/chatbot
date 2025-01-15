@@ -191,7 +191,7 @@ resource "aws_ecs_task_definition" "task_definition" {
     # Backend Container Definition
     {
       name      = "backend"
-      image     = "${var.ecr_repository_url}:backend-latest"
+      image     = "${var.ecr_repository_url}@${data.aws_ecr_image.backend.image_digest}"
       cpu       = 256
       memory    = 512
       essential = true
@@ -225,7 +225,7 @@ resource "aws_ecs_task_definition" "task_definition" {
     # Frontend Container Definition
     {
       name      = "frontend"
-      image     = "${var.ecr_repository_url}:frontend-latest"
+      image     = "${var.ecr_repository_url}@${data.aws_ecr_image.frontend.image_digest}"
       cpu       = 256
       memory    = 512
       essential = true
@@ -332,4 +332,14 @@ resource "null_resource" "run_efs_sync_task" {
   }
 
   depends_on = [aws_ecs_task_definition.efs_sync_task]
+}
+
+data "aws_ecr_image" "backend" {
+  repository_name = "${var.naming_prefix}-backend"
+  image_tag       = "latest"
+}
+
+data "aws_ecr_image" "frontend" {
+  repository_name = "${var.naming_prefix}-frontend"
+  image_tag       = "latest"
 }
