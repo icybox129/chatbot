@@ -99,6 +99,7 @@ resource "aws_ecs_service" "service" {
   deployment_maximum_percent         = 100
   launch_type                        = "FARGATE"
   enable_execute_command             = true
+  force_new_deployment               = true
 
   load_balancer {
     target_group_arn = var.alb_target_group_arn
