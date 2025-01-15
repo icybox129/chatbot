@@ -335,11 +335,11 @@ resource "null_resource" "run_efs_sync_task" {
 }
 
 data "aws_ecr_image" "backend" {
-  repository_name = "${var.naming_prefix}-backend"
-  image_tag       = "latest"
+  repository_name = "chatbot-dev-chatbot"
+  image_tag       = "backend-latest"
 }
 
 data "aws_ecr_image" "frontend" {
-  repository_name = "${var.naming_prefix}-frontend"
-  image_tag       = "latest"
+  repository_name = "chatbot-dev-chatbot"
+  image_tag       = "frontend-latest"
 }
