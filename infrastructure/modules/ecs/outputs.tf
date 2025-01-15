@@ -13,3 +13,7 @@ output "backend_image_digest" {
 output "frontend_image_digest" {
   value = data.aws_ecr_image.frontend.image_digest
 }
+
+output "frontend_image_info" {
+    value = data.aws_ecr_image.frontend
+}
