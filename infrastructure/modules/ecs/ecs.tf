@@ -178,6 +178,10 @@ resource "aws_ecs_task_definition" "task_definition" {
   cpu                      = 512
   memory                   = 1024
 
+  lifecycle {
+    create_before_destroy = true
+  }
+
     volume {
     name = "chroma-efs-volume"
     efs_volume_configuration {
