@@ -25,3 +25,7 @@ variable "openai_api_key_arn" {
 variable "ecr_repository_url" {
   type = string
 }
+
+variable "chroma_efs_id" {
+  type = string
+}

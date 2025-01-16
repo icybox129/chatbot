@@ -17,8 +17,8 @@ if not OPENAI_API_KEY:
 # Set up logging
 logging.basicConfig(
     level=logging.INFO,
-    filename='./backend/backend.log',
-    filemode='a',
+    # filename='./backend/backend.log',
+    # filemode='a',
     format='%(asctime)s %(levelname)s:%(message)s'
 )
 
