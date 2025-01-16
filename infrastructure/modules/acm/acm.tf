@@ -35,3 +35,24 @@ resource "aws_acm_certificate_validation" "cert_validation" {
   certificate_arn         = aws_acm_certificate.chatbot_cert.arn
   validation_record_fqdns = [for record in cloudflare_record.cert_validation : record.hostname]
 }
+
+resource "cloudflare_record" "root_domain" {
+  zone_id = var.cloudflare_zone_id
+  name    = "@"
+  type    = "CNAME"
+  value   = var.alb_dns_name
+  proxied = true
+
+  depends_on = [aws_acm_certificate_validation.cert_validation]
+}
+
+resource "cloudflare_record" "www_domain" {
+  zone_id = var.cloudflare_zone_id
+  name    = "www"
+  type    = "CNAME"
+  value   = "icybox.co.uk"
+  proxied = true
+
+  depends_on = [aws_acm_certificate_validation.cert_validation]
+}
+

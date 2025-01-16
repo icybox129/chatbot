@@ -33,6 +33,7 @@ module "acm" {
   additional_domains   = ["www.icybox.co.uk"]
   cloudflare_api_token = var.cloudflare_api_token
   cloudflare_zone_id   = "b39774430cd37fa3e995e405602f30a6"
+  alb_dns_name         = module.alb.alb_dns_name
 }
 
 module "alb" {

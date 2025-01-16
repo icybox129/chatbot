@@ -18,3 +18,7 @@ variable "cloudflare_zone_id" {
 variable "cloudflare_api_token" {
   type = string
 }
+
+variable "alb_dns_name" {
+  type = string
+}
