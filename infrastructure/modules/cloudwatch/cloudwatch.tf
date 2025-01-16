@@ -13,9 +13,9 @@ resource "aws_cloudwatch_event_rule" "efs_sync_schedule" {
 }
 
 resource "aws_cloudwatch_event_target" "efs_sync_schedule_target" {
-  rule      = aws_cloudwatch_event_rule.efs_sync_schedule.name
-  arn       = var.cluster_arn
-  role_arn  = aws_iam_role.eventbridge_invoke_ecs.arn
+  rule     = aws_cloudwatch_event_rule.efs_sync_schedule.name
+  arn      = var.cluster_arn
+  role_arn = aws_iam_role.eventbridge_invoke_ecs.arn
 
   ecs_target {
     launch_type         = "FARGATE"
