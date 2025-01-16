@@ -3,7 +3,7 @@ variable "naming_prefix" {
 }
 
 variable "private_subnet_ids" {
-    type = set(string)
+  type = set(string)
 }
 
 variable "cluster_arn" {

@@ -1,15 +1,16 @@
 provider "aws" {
   region = "eu-west-2"
-  # access_key = var.AWS_ACCESS_KEY
-  # secret_key = var.AWS_SECRET_KEY
 }
 
+provider "cloudflare" {
+  api_token = var.cloudflare_api_token
+}
 
-terraform { 
+terraform {
   backend "s3" {
-    bucket = "terraform-state-20250109160836745100000001"
-    key = "dev/terraform.tfstate"
-    region = "eu-west-2"
+    bucket  = "terraform-state-20250109160836745100000001"
+    key     = "dev/terraform.tfstate"
+    region  = "eu-west-2"
     encrypt = true
   }
   required_providers {
@@ -17,23 +18,38 @@ terraform {
       source  = "hashicorp/aws"
       version = "5.17.0"
     }
+
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 3.0"
+    }
   }
 }
 
+module "acm" {
+  source               = "../../modules/acm"
+  naming_prefix        = local.naming_prefix
+  domain_name          = "icybox.co.uk"
+  additional_domains   = ["www.icybox.co.uk"]
+  cloudflare_api_token = var.cloudflare_api_token
+  cloudflare_zone_id   = "b39774430cd37fa3e995e405602f30a6"
+}
+
 module "alb" {
-  source            = "../../modules/alb"
-  naming_prefix     = local.naming_prefix
-  vpc_id            = module.network.vpc_id
-  public_subnet_ids = module.network.public_subnet_ids
-  alb_sg_id         = module.sg.alb_sg_id
+  source              = "../../modules/alb"
+  naming_prefix       = local.naming_prefix
+  vpc_id              = module.network.vpc_id
+  public_subnet_ids   = module.network.public_subnet_ids
+  alb_sg_id           = module.sg.alb_sg_id
+  acm_certificate_arn = module.acm.certificate_arn
 }
 
 module "cloudwatch" {
-  source        = "../../modules/cloudwatch"
-  naming_prefix = local.naming_prefix
+  source                 = "../../modules/cloudwatch"
+  naming_prefix          = local.naming_prefix
   private_subnet_ids     = module.network.private_subnet_ids
-  cluster_arn = module.ecs.cluster_arn
-  efs_sync_task_arn = module.ecs.efs_sync_task_arn
+  cluster_arn            = module.ecs.cluster_arn
+  efs_sync_task_arn      = module.ecs.efs_sync_task_arn
   ecs_container_instance = [module.sg.ecs_container_instance]
 }
 
@@ -79,8 +95,8 @@ module "sg" {
 }
 
 module "efs" {
-  source = "../../modules/efs"
-  naming_prefix  = local.naming_prefix
-  private_subnet_ids     = module.network.private_subnet_ids
-  efs_sg = module.sg.efs_sg
+  source             = "../../modules/efs"
+  naming_prefix      = local.naming_prefix
+  private_subnet_ids = module.network.private_subnet_ids
+  efs_sg             = module.sg.efs_sg
 }

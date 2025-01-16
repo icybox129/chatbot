@@ -182,11 +182,11 @@ resource "aws_ecs_task_definition" "task_definition" {
     create_before_destroy = true
   }
 
-    volume {
+  volume {
     name = "chroma-efs-volume"
     efs_volume_configuration {
-      file_system_id = var.chroma_efs_id
-      root_directory = "/"
+      file_system_id     = var.chroma_efs_id
+      root_directory     = "/"
       transit_encryption = "ENABLED"
     }
   }
@@ -219,9 +219,9 @@ resource "aws_ecs_task_definition" "task_definition" {
           awslogs-stream-prefix = "${var.naming_prefix}-backend-log-stream"
         }
       },
-      "mountPoints": [
+      "mountPoints" : [
         {
-          "sourceVolume"  : "chroma-efs-volume",
+          "sourceVolume" : "chroma-efs-volume",
           "containerPath" : "/app/data/chroma"
         }
       ]
@@ -287,37 +287,37 @@ resource "aws_ecs_task_definition" "efs_sync_task" {
   memory                   = 512
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   task_role_arn            = aws_iam_role.ecs_task_role.arn
-  
+
   volume {
     name = "chroma-efs-volume"
     efs_volume_configuration {
-      file_system_id      = var.chroma_efs_id
-      root_directory      = "/"
-      transit_encryption  = "ENABLED"
+      file_system_id     = var.chroma_efs_id
+      root_directory     = "/"
+      transit_encryption = "ENABLED"
     }
   }
 
   container_definitions = jsonencode([
     {
-      "name": "efs-sync",
-      "image": "amazon/aws-cli:latest",
-      "essential": true,
-      "entryPoint": ["sh", "-c"],
-      "command": [
+      "name" : "efs-sync",
+      "image" : "amazon/aws-cli:latest",
+      "essential" : true,
+      "entryPoint" : ["sh", "-c"],
+      "command" : [
         "cd / && echo 'Syncing S3 to EFS...' && aws s3 sync s3://nick-terraform-test-docs/data/chroma /app/data/chroma && echo 'S3 -> EFS Sync completed.'"
       ],
-      "logConfiguration": {
-        "logDriver": "awslogs",
-        "options": {
-          "awslogs-group":         "${var.log_group_name}",
-          "awslogs-region":        "eu-west-2",
-          "awslogs-stream-prefix": "${var.naming_prefix}-efs-sync"
+      "logConfiguration" : {
+        "logDriver" : "awslogs",
+        "options" : {
+          "awslogs-group" : "${var.log_group_name}",
+          "awslogs-region" : "eu-west-2",
+          "awslogs-stream-prefix" : "${var.naming_prefix}-efs-sync"
         }
       },
-      "mountPoints": [
+      "mountPoints" : [
         {
-          "sourceVolume": "chroma-efs-volume",
-          "containerPath": "/app/data/chroma"
+          "sourceVolume" : "chroma-efs-volume",
+          "containerPath" : "/app/data/chroma"
         }
       ]
     }

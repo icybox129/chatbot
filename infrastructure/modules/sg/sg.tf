@@ -61,24 +61,24 @@ resource "aws_security_group" "alb" {
 }
 
 resource "aws_security_group" "efs_sg" {
-  name = "${var.naming_prefix}-efs-sg"
+  name   = "${var.naming_prefix}-efs-sg"
   vpc_id = var.vpc_id
 
   ingress {
-    description = "Allow inbound NFS"
-    from_port = 2049
-    to_port = 2049
-    protocol = "tcp"
+    description     = "Allow inbound NFS"
+    from_port       = 2049
+    to_port         = 2049
+    protocol        = "tcp"
     security_groups = [aws_security_group.ecs_container_instance.id]
   }
 
   egress {
-    from_port = 0
-    to_port = 0
-    protocol = "-1"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  
+
   tags = {
     Name = "${var.naming_prefix}-efs-sg"
   }

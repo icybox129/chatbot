@@ -13,7 +13,6 @@ variable "openai_api_key" {
   type        = string
 }
 
-
-# variable "AWS_ACCESS_KEY" {}
-
-# variable "AWS_SECRET_KEY" {}
+variable "cloudflare_api_token" {
+  description = "Cloudflare API token for authentication"
+}

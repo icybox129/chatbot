@@ -1,11 +1,11 @@
 variable "naming_prefix" {
-    type = string
+  type = string
 }
 
 variable "private_subnet_ids" {
-    type = list(string)
+  type = list(string)
 }
 
 variable "efs_sg" {
-    type = string
+  type = string
 }
