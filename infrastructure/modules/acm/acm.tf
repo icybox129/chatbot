@@ -19,16 +19,19 @@ resource "aws_acm_certificate" "chatbot_cert" {
 }
 
 resource "cloudflare_record" "cert_validation" {
-  count   = length(aws_acm_certificate.chatbot_cert.domain_validation_options)
-  zone_id = var.cloudflare_zone_id
+  for_each = {
+    for d in aws_acm_certificate.chatbot_cert.domain_validation_options :
+    d.resource_record_name => d
+  }
 
-  name  = aws_acm_certificate.chatbot_cert.domain_validation_options[count.index].resource_record_name
-  type  = aws_acm_certificate.chatbot_cert.domain_validation_options[count.index].resource_record_type
-  value = aws_acm_certificate.chatbot_cert.domain_validation_options[count.index].resource_record_value
-  ttl   = 120
+  zone_id = var.cloudflare_zone_id
+  name    = each.value.resource_record_name
+  type    = each.value.resource_record_type
+  value   = each.value.resource_record_value
+  ttl     = 120
 }
 
 resource "aws_acm_certificate_validation" "cert_validation" {
   certificate_arn         = aws_acm_certificate.chatbot_cert.arn
-  validation_record_fqdns = cloudflare_record.cert_validation[*].hostname
+  validation_record_fqdns = [for record in cloudflare_record.cert_validation : record.hostname]
 }
