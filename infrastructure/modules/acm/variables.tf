@@ -7,8 +7,8 @@ variable "domain_name" {
 }
 
 variable "additional_domains" {
-  type        = list(string)
-  default     = []
+  type    = list(string)
+  default = []
 }
 
 variable "cloudflare_zone_id" {
