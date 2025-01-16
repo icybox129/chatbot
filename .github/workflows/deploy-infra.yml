@@ -37,19 +37,19 @@ jobs:
           TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: terraform init
 
-      - name: Terraform Plan (ECR only)
+      - name: Terraform Plan (ECR and ACM)
         working-directory: infrastructure/environment/dev
         env:
           TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-        run: terraform plan -target=module.ecr.aws_ecr_repository.ecr
+        run: terraform plan -target=module.ecr.aws_ecr_repository.ecr -target=module.acm.aws_acm_certificate.chatbot_cert
 
-      - name: Terraform Apply (ECR only)
+      - name: Terraform Apply (ECR and ACM)
         working-directory: infrastructure/environment/dev
         env:
           TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-        run: terraform apply -auto-approve -target=module.ecr.aws_ecr_repository.ecr
+        run: terraform apply -auto-approve -target=module.ecr.aws_ecr_repository.ecr -target=module.acm.aws_acm_certificate.chatbot_cert
 
       - name: Retrieve and Update ECR Repo URL
         working-directory: infrastructure/environment/dev
