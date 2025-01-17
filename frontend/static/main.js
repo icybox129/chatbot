@@ -123,7 +123,7 @@ function sendMessage() {
 
 function startNewConversation() {
     document.getElementById('chat-window').innerHTML = '';
-    fetch('/api/new_conversation', {
+    fetch('/new_conversation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
     });
