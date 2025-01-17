@@ -6,6 +6,6 @@ output "alb_dns_name" {
   value = aws_alb.alb.dns_name
 }
 
-output "alb_name" {
-  value = aws_alb.alb.name
+output "alb_arn_suffix" {
+  value = aws_alb.alb.arn_suffix
 }

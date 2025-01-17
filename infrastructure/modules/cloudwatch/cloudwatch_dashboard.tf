@@ -46,7 +46,7 @@ resource "aws_cloudwatch_dashboard" "dashboard" {
         "height" : 6,
         "properties" : {
           "metrics" : [
-            ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", var.alb_name]
+            ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", var.alb_arn_suffix]
           ],
           "view" : "timeSeries",
           "stacked" : false,

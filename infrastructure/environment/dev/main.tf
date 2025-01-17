@@ -55,7 +55,7 @@ module "cloudwatch" {
   ecs_container_instance = [module.sg.ecs_container_instance]
   ecs_cluster_name       = module.ecs.cluster_name
   ecs_service_name       = module.ecs.service_name
-  alb_name               = module.alb.alb_name
+  alb_arn_suffix         = module.alb.alb_arn_suffix
 }
 
 module "ecr" {

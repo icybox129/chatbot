@@ -30,6 +30,6 @@ variable "ecs_service_name" {
   type = string
 }
 
-variable "alb_name" {
+variable "alb_arn_suffix" {
   type = string
 }
