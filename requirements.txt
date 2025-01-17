@@ -165,7 +165,7 @@ typing-inspect==0.9.0
 typing_extensions==4.12.2
 unstructured==0.16.0
 unstructured-client==0.26.1
-urllib3==2.2.3
+urllib3
 uvicorn==0.23.2
 uvloop==0.21.0
 watchfiles==0.24.0
