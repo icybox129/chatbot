@@ -113,44 +113,6 @@ resource "aws_cloudwatch_dashboard" "dashboard" {
           "period" : 60
         }
       },
-      # ECS Running Task Count
-      {
-        "type" : "metric",
-        "x" : 0,
-        "y" : 24,
-        "width" : 12,
-        "height" : 6,
-        "properties" : {
-          "metrics" : [
-            ["AWS/ECS", "RunningTaskCount", "ClusterName", var.ecs_cluster_name, "ServiceName", var.ecs_service_name]
-          ],
-          "view" : "timeSeries",
-          "stacked" : false,
-          "region" : var.aws_region,
-          "title" : "ECS Running Task Count",
-          "stat" : "Average",
-          "period" : 60
-        }
-      },
-      # ECS Task Failed to Start Count
-      {
-        "type" : "metric",
-        "x" : 12,
-        "y" : 24,
-        "width" : 12,
-        "height" : 6,
-        "properties" : {
-          "metrics" : [
-            ["AWS/ECS", "TaskFailedToStartCount", "ClusterName", var.ecs_cluster_name, "ServiceName", var.ecs_service_name]
-          ],
-          "view" : "timeSeries",
-          "stacked" : false,
-          "region" : var.aws_region,
-          "title" : "ECS Task Failed to Start Count",
-          "stat" : "Sum",
-          "period" : 60
-        }
-      }
     ]
   })
 }
