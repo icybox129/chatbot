@@ -45,12 +45,14 @@ resource "aws_cloudwatch_dashboard" "dashboard" {
         "width" : 24,
         "height" : 6,
         "properties" : {
+          "period": 60,
           "metrics" : [
             ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", var.alb_arn_suffix]
           ],
           "view" : "timeSeries",
           "stacked" : false,
           "region" : var.aws_region,
+          "stat": "Sum",
           "title" : "ALB Request Count"
         }
       }
