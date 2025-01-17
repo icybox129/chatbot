@@ -41,19 +41,24 @@ resource "aws_cloudwatch_dashboard" "dashboard" {
       {
         "type" : "metric",
         "x" : 0,
-        "y" : 6,
-        "width" : 24,
+        "y" : 12,
+        "width" : 6,
         "height" : 6,
         "properties" : {
-          "period": 60,
+          "period" : 60,
           "metrics" : [
-            ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", var.alb_arn_suffix]
+            ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", "app/chatbot-dev-alb/9dd8b84b4d104544", { "label" : "chatbot-dev-alb", "visible" : true, "region" : "eu-west-2" }]
           ],
+          "region" : "eu-west-2",
+          "stat" : "Sum",
+          "title" : "Requests",
+          "yAxis" : {
+            "left" : {
+              "min" : 0
+            }
+          },
           "view" : "timeSeries",
-          "stacked" : false,
-          "region" : var.aws_region,
-          "stat": "Sum",
-          "title" : "ALB Request Count"
+          "stacked" : false
         }
       }
     ]
