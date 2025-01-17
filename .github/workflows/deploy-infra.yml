@@ -142,8 +142,8 @@ jobs:
 
       - name: Build Backend Image
         run: |
-          docker build -t chatbot-dev-chatbot:backend-latest -f Dockerfile.backend .
-          docker tag chatbot-dev-chatbot:backend-latest \
+          docker build -t chatbot-dev:backend-latest -f Dockerfile.backend .
+          docker tag chatbot-dev:backend-latest \
             ${{ vars.ECR_REPO_URL }}:backend-latest
 
       - name: Push Backend Image
@@ -152,8 +152,8 @@ jobs:
 
       - name: Build Frontend Image
         run: |
-          docker build -t chatbot-dev-chatbot:frontend-latest -f Dockerfile.frontend .
-          docker tag chatbot-dev-chatbot:frontend-latest \
+          docker build -t chatbot-dev:frontend-latest -f Dockerfile.frontend .
+          docker tag chatbot-dev:frontend-latest \
             ${{ vars.ECR_REPO_URL }}:frontend-latest
 
       - name: Push Frontend Image
