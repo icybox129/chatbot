@@ -339,11 +339,11 @@ resource "null_resource" "run_efs_sync_task" {
 }
 
 data "aws_ecr_image" "backend" {
-  repository_name = "chatbot-dev-chatbot"
+  repository_name = "chatbot-dev"
   image_tag       = "backend-latest"
 }
 
 data "aws_ecr_image" "frontend" {
-  repository_name = "chatbot-dev-chatbot"
+  repository_name = "chatbot-dev"
   image_tag       = "frontend-latest"
 }

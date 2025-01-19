@@ -48,18 +48,15 @@ module "alb" {
 module "cloudwatch" {
   source                 = "../../modules/cloudwatch"
   naming_prefix          = local.naming_prefix
+  aws_region             = var.aws_region
   private_subnet_ids     = module.network.private_subnet_ids
   cluster_arn            = module.ecs.cluster_arn
   efs_sync_task_arn      = module.ecs.efs_sync_task_arn
   ecs_container_instance = [module.sg.ecs_container_instance]
+  ecs_cluster_name       = module.ecs.cluster_name
+  ecs_service_name       = module.ecs.service_name
+  alb_arn_suffix         = module.alb.alb_arn_suffix
 }
-
-# module "ec2" {
-#   source        = "../../modules/ec2"
-#   naming_prefix = local.naming_prefix
-#   ec2_sg_id     = [module.sg.ec2_sg_id]
-#   subnet_id     = module.network.subnet_id
-# }
 
 module "ecr" {
   source        = "../../modules/ecr"

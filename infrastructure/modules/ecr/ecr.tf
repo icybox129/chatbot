@@ -3,7 +3,7 @@
 ######################
 
 resource "aws_ecr_repository" "ecr" {
-  name         = "${lower(var.naming_prefix)}-chatbot"
+  name         = lower(var.naming_prefix)
   force_delete = true
 
   image_scanning_configuration {
