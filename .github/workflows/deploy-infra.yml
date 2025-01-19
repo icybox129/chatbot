@@ -75,9 +75,9 @@ jobs:
 
       # Set up Snyk
       - name: Set up Snyk
-        uses: snyk/actions/setup@master  # Pin to a specific version
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        uses: snyk/actions/setup@v2  # Pin to a specific version
+        with:
+          token: ${{ secrets.SNYK_TOKEN }}
 
       # 1) Python dependencies scan
       - name: Snyk Python Dependencies Scan
