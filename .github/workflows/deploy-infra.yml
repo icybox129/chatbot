@@ -11,6 +11,9 @@ permissions:
   actions: write  # Required for updating repository variables
 
 jobs:
+  # ------------------------------------------------------------------------
+  # 1) Run Unit Tests (Python + JavaScript)
+  # ------------------------------------------------------------------------
   run-tests:
     name: Run Unit Tests
     runs-on: ubuntu-latest
@@ -18,7 +21,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Python Tests
+      # ------------------ Python Tests ------------------ #
       - name: Set Up Python
         uses: actions/setup-python@v4
         with:
@@ -40,7 +43,7 @@ jobs:
           source venv/bin/activate
           pytest tests/test_app.py tests/test_preprocessing.py
 
-      # JavaScript Tests
+      # ------------------ JavaScript Tests ------------------ #
       - name: Set Up Node.js
         uses: actions/setup-node@v3
         with:
@@ -52,6 +55,9 @@ jobs:
       - name: Run JavaScript Unit Tests
         run: npm test
 
+  # ------------------------------------------------------------------------
+  # 2) Snyk Scans (Python, Node.js, and Terraform IaC)
+  # ------------------------------------------------------------------------
   snyk-scan:
     name: Snyk Scan
     needs: run-tests
@@ -60,12 +66,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Set up Python Environment
-      - name: Set Up Python for Snyk
-        uses: actions/setup-python@v4
-        with:
-          python-version: 3.10.12
-
+      # ------------------ Python Dependencies Scan ------------------ #
       - name: Install Python Dependencies for Snyk
         run: |
           python -m venv venv
@@ -73,30 +74,33 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      # Set up Snyk
-      - name: Set up Snyk
-        uses: snyk/actions/setup@v2  # Pin to a specific version
-        with:
-          token: ${{ secrets.SNYK_TOKEN }}
+      - name: Run Snyk Python Scan
+        uses: snyk/actions/python@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
-      # 1) Python dependencies scan
-      - name: Snyk Python Dependencies Scan
-        run: |
-          source venv/bin/activate
-          snyk test --file=requirements.txt --package-manager=pip
+      # ------------------ Node.js Dependencies Scan ------------------ #
+      - name: Install Node.js Dependencies for Snyk
+        run: npm install
 
-      # 2) JavaScript dependencies scan
-      - name: Snyk JavaScript Dependencies Scan
-        run: snyk test --file=package.json
-        # Alternatively, specify package-lock.json if using npm-lock
+      - name: Run Snyk Node.js Scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
-      # 3) Terraform IaC scan
-      - name: Snyk Terraform IaC Scan
-        run: snyk iac test infrastructure/environment/dev infrastructure/modules
+      # ------------------ Terraform IaC Scan ------------------ #
+      - name: Run Snyk Terraform IaC Scan
+        uses: snyk/actions/iac@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: false  # Set to true if you want to continue on IaC scan failures
 
+  # ------------------------------------------------------------------------
+  # 3) Deploy Infrastructure (ECR and ACM)
+  # ------------------------------------------------------------------------
   deploy-infrastructure:
     name: Deploy Infrastructure
-    needs: [run-tests, snyk-scan]
+    needs: snyk-scan
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -154,6 +158,9 @@ jobs:
         run: |
           echo "DEBUG: Using ECR_REPO_URL: ${{ vars.ECR_REPO_URL }}"
 
+  # ------------------------------------------------------------------------
+  # 4) Build & Push Docker Images
+  # ------------------------------------------------------------------------
   build-and-push:
     name: Build & Push Docker Images
     needs: deploy-infrastructure
@@ -194,9 +201,12 @@ jobs:
         run: |
           docker push ${{ vars.ECR_REPO_URL }}:frontend-latest
 
+  # ------------------------------------------------------------------------
+  # 5) Deploy Remaining Infrastructure
+  # ------------------------------------------------------------------------
   deploy-remaining:
     name: Deploy Remaining Infrastructure
-    needs: [build-and-push]
+    needs: build-and-push
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
