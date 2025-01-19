@@ -54,36 +54,48 @@ jobs:
 
   snyk-scan:
     name: Snyk Scan
-    # Make sure scans only run if tests pass:
     needs: run-tests
     runs-on: ubuntu-latest
     steps:
-      - name: Check out code
+      - name: Checkout Code
         uses: actions/checkout@v3
 
+      # Set up Python Environment
+      - name: Set Up Python for Snyk
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.10.12
+
+      - name: Install Python Dependencies for Snyk
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Set up Snyk
       - name: Set up Snyk
-        uses: snyk/actions/setup@master
+        uses: snyk/actions/setup@master  # Pin to a specific version
         env:
-          # Make sure you add SNYK_TOKEN to your repository secrets
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       # 1) Python dependencies scan
       - name: Snyk Python Dependencies Scan
-        run: snyk test --file=requirements.txt --package-manager=pip
+        run: |
+          source venv/bin/activate
+          snyk test --file=requirements.txt --package-manager=pip
 
       # 2) JavaScript dependencies scan
-      # Adjust the command if you prefer to specify package.json or package-lock.json explicitly
       - name: Snyk JavaScript Dependencies Scan
         run: snyk test --file=package.json
+        # Alternatively, specify package-lock.json if using npm-lock
 
       # 3) Terraform IaC scan
-      # Scans both environment/dev and modules directories
       - name: Snyk Terraform IaC Scan
         run: snyk iac test infrastructure/environment/dev infrastructure/modules
 
   deploy-infrastructure:
     name: Deploy Infrastructure
-    # Only start deployment after tests AND Snyk scans succeed
     needs: [run-tests, snyk-scan]
     runs-on: ubuntu-latest
     steps:
