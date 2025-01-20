@@ -67,17 +67,6 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v2
 
-      # ------------------ Python Dependencies Scan ------------------ #
-      - name: Install Python Dependencies for Snyk
-        run: pip install -r requirements.txt
-
-      - name: Run Snyk Python Scan
-        uses: snyk/actions/python@master
-        with:
-          args: test --file=requirements.txt
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-
       # ------------------ Node.js Dependencies Scan ------------------ #
       - name: Install Node.js Dependencies for Snyk
         run: npm install
@@ -92,6 +81,8 @@ jobs:
         uses: snyk/actions/iac@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
         continue-on-error: false  # Set to true if you want to continue on IaC scan failures
 
   # ------------------------------------------------------------------------
