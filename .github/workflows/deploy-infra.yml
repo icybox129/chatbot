@@ -15,53 +15,53 @@ jobs:
   # ------------------------------------------------------------------------
   # 1) Run Unit Tests (Python + JavaScript)
   # ------------------------------------------------------------------------
-  # run-tests:
-  #   name: Run Unit Tests
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout Code
-  #       uses: actions/checkout@v3
+  run-tests:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-  #     # ------------------ Python Tests ------------------ #
-  #     - name: Set Up Python
-  #       uses: actions/setup-python@v4
-  #       with:
-  #         python-version: 3.10.12
+      # ------------------ Python Tests ------------------ #
+      - name: Set Up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.10.12
 
-  #     - name: Install Python Dependencies
-  #       run: |
-  #         python -m venv venv
-  #         source venv/bin/activate
-  #         pip install --upgrade pip
-  #         pip install -r requirements.txt
+      - name: Install Python Dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
 
-  #     - name: Run Python Unit Tests
-  #       env:
-  #         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-  #         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  #         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-  #       run: |
-  #         source venv/bin/activate
-  #         pytest tests/test_app.py tests/test_preprocessing.py
+      - name: Run Python Unit Tests
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          source venv/bin/activate
+          pytest tests/test_app.py tests/test_preprocessing.py
 
-  #     # ------------------ JavaScript Tests ------------------ #
-  #     - name: Set Up Node.js
-  #       uses: actions/setup-node@v3
-  #       with:
-  #         node-version: 20.9.0
+      # ------------------ JavaScript Tests ------------------ #
+      - name: Set Up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20.9.0
 
-  #     - name: Install Node.js Dependencies
-  #       run: npm install
+      - name: Install Node.js Dependencies
+        run: npm install
 
-  #     - name: Run JavaScript Unit Tests
-  #       run: npm test
+      - name: Run JavaScript Unit Tests
+        run: npm test
 
   # ------------------------------------------------------------------------
   # 2) Snyk Scans (Python, Node.js, and Terraform IaC)
   # ------------------------------------------------------------------------
   snyk-scan:
     name: Snyk Scan
-    # needs: run-tests
+    needs: run-tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -73,6 +73,8 @@ jobs:
 
       - name: Run Snyk Python Scan
         uses: snyk/actions/python@master
+        with:
+          args: test --file=requirements.txt
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
