@@ -68,12 +68,7 @@ jobs:
 
       # ------------------ Python Dependencies Scan ------------------ #
       - name: Install Python Dependencies for Snyk
-        run: |
-          python -m venv venv
-          source venv/bin/activate
-          pip install --upgrade pip
-          pip install -r requirements.txt
-          working-directory: ./
+        run: pip install -r requirements.txt
 
       - name: Run Snyk Python Scan
         uses: snyk/actions/python@master
