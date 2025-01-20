@@ -64,7 +64,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
       # ------------------ Python Dependencies Scan ------------------ #
       - name: Install Python Dependencies for Snyk
@@ -73,6 +73,7 @@ jobs:
           source venv/bin/activate
           pip install --upgrade pip
           pip install -r requirements.txt
+          working-directory: ./
 
       - name: Run Snyk Python Scan
         uses: snyk/actions/python@master
