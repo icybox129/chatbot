@@ -1,0 +1,379 @@
+/* General Variables */
+:root {
+    --primary-color: #10a37f;
+    /* --primary-color: #a39710; */
+    --background-dark: #343541; 
+    --background-light: #f7f7f8;
+    --text-color: #ececf1;
+    --chat-bg-color: #40414f;
+    --input-bg-color: #444654;
+    --code-bg-color: #2b2d3c;
+    --highlight-bg-color: #f7f7f8;
+}
+
+/* Reset */
+body, html {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background-color: var(--background-dark);
+    color: var(--text-color);
+    height: 100%; /* Ensures the body is full height */
+    display: flex;
+    flex-direction: column; /* Align children in a column */
+}
+
+/* Chat Layout */
+.chat-container {
+    display: flex;
+    width: 100%;
+    height: 100%; /* Ensures chat-container takes full height */
+    overflow: hidden; /* Prevents content from splling outside the contaienr */
+}
+
+/* Sidebar */
+.sidebar {
+    width: 250px;
+    min-width: 250px;
+    max-width: 250px;
+    background-color: var(--chat-bg-color);
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    overflow-y: auto;
+    flex-shrink: 0; /* Should prevent side bar from shrinking */
+}
+
+.sidebar h1 {
+    font-size: 1.5rem;
+    margin-bottom: 20px; /* Add space below the title */
+    text-align: center; /* Center the text within the h1 */
+    align-self: center; /* Ensure it's aligned with the flex container */
+}
+.new-conversation-btn {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-bottom: 20px;
+}
+
+.previous-chats h2 {
+    margin-bottom: 10px;
+}
+
+.previous-chats {
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.previous-chats div {
+    padding: 10px;
+    background-color: var(--input-bg-color);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    cursor: pointer;
+}
+
+/* Main Chat Area */
+.main-area {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--background-dark);
+    height: 100%;
+}
+
+.chat-window {
+    flex-grow: 1;
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary-color) var(--input-bg-color);
+}
+
+/* For WebKit browsers (Chrome, Safari) */
+.chat-window::-webkit-scrollbar {
+    width: 8px;
+}
+
+.chat-window::-webkit-scrollbar-thumb {
+    background-color: var(--primary-color);
+    border-radius: 8px;
+}
+
+.chat-window::-webkit-scrollbar-track {
+    background-color: var(--input-bg-color);
+}
+
+.message {
+    max-width: 75%; /* Keep messages from stretching across the screen */
+    padding: 15px;
+    border-radius: 10px;
+    font-size: 1rem;
+    line-height: 1.5;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); /* Subtle shadow for aesthetics */
+    margin-bottom: 10px;
+}
+
+
+.user-message {
+    background-color: var(--primary-color);
+    align-self: flex-end;
+    color: white;
+}
+
+/* Normal bot message without shimmer */
+.bot-message {
+    display: flex;
+    flex-direction: column; /* Stack elements vertically */
+    gap: 5px; /* Adjust the spacing between child elements */
+    align-self: flex-start; /* Align bot messages to the left */
+    background-color: var(--input-bg-color);
+    color: white;
+    padding: 15px;
+    border-radius: 10px;
+    line-height: 1.5;
+}
+
+/* Input Section */
+.chat-input textarea {
+    flex-grow: 1;
+    border: none;
+    padding: 10px;
+    border-radius: 8px;
+    margin-right: 10px;
+    background-color: var(--input-bg-color);
+    color: white;
+    resize: none; /* Prevents user resizing */
+    overflow-y: auto;
+    font-family: inherit;
+    font-size: 1rem;
+    max-height: 150px;
+    box-sizing: border-box; /* Ensures padding and border are included in the height */
+}
+
+/* Ensures the scroll area respects the border-radius */
+.chat-input textarea::-webkit-scrollbar {
+    width: 8px;
+}
+
+.chat-input textarea::-webkit-scrollbar-thumb {
+    background-color: var(--primary-color); /* Matches the main scrollbar thumb color */
+    border-radius: 4px;
+}
+
+.chat-input textarea::-webkit-scrollbar-track {
+    background-color: var(--input-bg-color); /* Matches the track of the main scrollbar */
+    border-radius: 4px;
+}
+
+.chat-input button {
+    background-color: var(--primary-color);
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.chat-input {
+    display: flex;
+    background-color: var(--chat-bg-color);
+    padding: 15px;
+    flex-shrink: 0; /* Prevents the input bar from shrinking */
+}
+
+.chat-input input {
+    flex-grow: 1;
+    border: none;
+    padding: 10px;
+    border-radius: 8px;
+    margin-right: 10px;
+    background-color: var(--input-bg-color);
+    color: white;
+}
+
+/* Code Block */
+
+/* Copy button styling */
+.copy-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    opacity: 0.8;
+    transition: opacity 0.3s;
+}
+
+.copy-button:hover {
+    opacity: 1;
+}
+
+.chat-window pre {
+    margin: 10px 0;
+    line-height: 1.5;
+}
+
+/* Loading Indicator */
+
+/* Shimmer effect for the typing indicator */
+.loading-indicator {
+    min-height: 20px; /* Ensure it has enough space */
+    font-size: 1rem;
+    font-weight: bold;
+    color: #808080; /* Default text color for fallback */
+    position: relative;
+    overflow: hidden; /* Ensure the animation stays within bounds */
+    background: linear-gradient(90deg, #606060 25%, #a0a0a0 50%, #606060 75%);
+    background-size: 200% 100%;
+    
+    /* Add compatibility properties */
+    -webkit-background-clip: text; /* For Safari and Chrome */
+    background-clip: text; /* Standard property for future compatibility */
+
+    -webkit-text-fill-color: transparent; /* Required for text transparency in WebKit browsers */
+    animation: loading-animation 3s infinite;
+    margin-bottom: 10px; /* Add spacing below the bubble */
+}
+
+
+/* List Styles */
+/* Reset default list styles */
+.bot-message ul,
+.bot-message ol {
+    margin-top: 5px; /* Reduce spacing between "Sources:" and the list */
+    margin-bottom: 0; /* Ensure no unnecessary spacing at the bottom */
+    padding: 0;
+    padding-left: 20px; /* Adjust indentation if needed */
+    list-style-position: outside;
+    display: flex;
+    flex-direction: column;
+}
+
+.bot-message li {
+    margin: 0;
+    margin-bottom: 5px;
+    padding: 0;
+    line-height: 1.5;
+    font-size: 1rem;
+}
+
+/* Remove default margins and padding from paragraphs in bot messages */
+.bot-message p {
+    margin: 0;
+    padding: 0;
+}
+
+/* Code Block Styles */
+.bot-message pre {
+    position: relative;
+    padding: 15px;
+    border-radius: 8px;
+    background-color: var(--code-bg-color);
+    color: var(--text-color);
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.9rem;
+    overflow-x: auto;
+    margin: 10px 0;
+    line-height: 1.5;
+}
+
+.bot-message pre code {
+    display: block;
+    white-space: pre;
+}
+
+/* Inline Code Styles */
+.bot-message p code,
+.bot-message li code,
+.bot-message span code {
+    background-color: var(--code-bg-color);
+    color: var(--highlight-bg-color);
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.9rem;
+    padding: 2px 4px;
+    border-radius: 4px;
+}
+
+/* Sources Section Styling with Flexbox */
+.sources-section {
+    display: flex;
+    flex-direction: column; /* Stack the heading and list vertically */
+    margin-top: 5px; /* Reduce space above the sources section */
+    padding: 8px 12px; /* Compact padding */
+    background-color: var(--input-bg-color); /* Subtle contrast */
+    border-left: 3px solid var(--primary-color); /* Visual indicator */
+    border-radius: 4px; /* Soft border rounding */
+    font-size: 0.85rem; /* Compact font size */
+    color: var(--text-color);
+    gap: 5px; /* Add space between elements */
+}
+
+.sources-section h4 {
+    margin: 0;
+    font-weight: bold;
+    color: var(--primary-color);
+    display: inline-flex; /* Align text with flexbox if needed */
+    align-items: center; /* Center vertically (optional) */
+}
+
+.sources-section ul {
+    margin: 0;
+    padding-left: 20px; /* Keep proper indentation */
+    list-style-type: disc;
+    display: flex; /* Flexbox for list items */
+    flex-direction: column; /* Ensure vertical stacking */
+    gap: 3px; /* Reduce spacing between list items */
+}
+
+.sources-section li {
+    margin: 0;
+    padding: 0;
+    line-height: 1.4; /* Tighten spacing within list items */
+}
+
+@keyframes loading-animation {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+
+@media (max-width: 768px) {
+    .chat-window {
+        padding: 10px;
+        gap: 10px;
+    }
+
+    .sidebar {
+        width: 200px;
+        min-width: 200px;
+        max-width: 200px;
+    }
+
+    .chat-container {
+        flex-direction: column;
+    }
+
+    .message {
+        max-width: 90%; /* Allow wider bubbles for smaller screens */
+        font-size: 0.9rem; /* Slightly smaller font */
+    }
+}
