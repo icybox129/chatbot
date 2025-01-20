@@ -9,8 +9,12 @@ on:
 
 permissions:
   actions: write  # Required for updating repository variables
-  
+  contents: read
+
 jobs:
+  # ------------------------------------------------------------------------
+  # 1) Run Unit Tests (Python + JavaScript)
+  # ------------------------------------------------------------------------
   run-tests:
     name: Run Unit Tests
     runs-on: ubuntu-latest
@@ -18,7 +22,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Python Tests
+      # ------------------ Python Tests ------------------ #
       - name: Set Up Python
         uses: actions/setup-python@v4
         with:
@@ -40,7 +44,7 @@ jobs:
           source venv/bin/activate
           pytest tests/test_app.py tests/test_preprocessing.py
 
-      # JavaScript Tests
+      # ------------------ JavaScript Tests ------------------ #
       - name: Set Up Node.js
         uses: actions/setup-node@v3
         with:
@@ -52,9 +56,41 @@ jobs:
       - name: Run JavaScript Unit Tests
         run: npm test
 
+  # ------------------------------------------------------------------------
+  # 2) Snyk Scans (Python, Node.js, and Terraform IaC)
+  # ------------------------------------------------------------------------
+  snyk-scan:
+    name: Snyk Scan
+    needs: run-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      # ------------------ Node.js Dependencies Scan ------------------ #
+      - name: Install Node.js Dependencies for Snyk
+        run: npm install
+
+      - name: Run Snyk Node.js Scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      # ------------------ Terraform IaC Scan ------------------ #
+      - name: Run Snyk Terraform IaC Scan
+        uses: snyk/actions/iac@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+        continue-on-error: false  # Set to true if you want to continue on IaC scan failures
+
+  # ------------------------------------------------------------------------
+  # 3) Deploy Infrastructure (ECR and ACM)
+  # ------------------------------------------------------------------------
   deploy-infrastructure:
     name: Deploy Infrastructure
-    needs: run-tests  # Run this job only if "run-tests" passes
+    needs: snyk-scan
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -99,27 +135,22 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_PA_TOKEN }}
         run: |
           set -e
-      
-          # Retrieve the ECR URL from Terraform output
           ecr_repo_url=$(terraform output -raw ecr_repository_url || echo "")
-      
-          # Validate the output
           if [ -z "$ecr_repo_url" ]; then
             echo "::error::ECR Repository URL is empty or null"
             exit 1
           fi
-      
-          # Update GitHub repository variable using GitHub CLI
           gh variable set ECR_REPO_URL --body "$ecr_repo_url"
-      
-          # Debug output (optional, for logs only, and hides the value for security)
           echo "::add-mask::$ecr_repo_url"
           echo "Successfully saved ECR_REPO_URL to repository variables."
-      
+
       - name: Debug ECR Repo URL
         run: |
           echo "DEBUG: Using ECR_REPO_URL: ${{ vars.ECR_REPO_URL }}"
 
+  # ------------------------------------------------------------------------
+  # 4) Build & Push Docker Images
+  # ------------------------------------------------------------------------
   build-and-push:
     name: Build & Push Docker Images
     needs: deploy-infrastructure
@@ -160,9 +191,12 @@ jobs:
         run: |
           docker push ${{ vars.ECR_REPO_URL }}:frontend-latest
 
+  # ------------------------------------------------------------------------
+  # 5) Deploy Remaining Infrastructure
+  # ------------------------------------------------------------------------
   deploy-remaining:
     name: Deploy Remaining Infrastructure
-    needs: [build-and-push]
+    needs: build-and-push
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -179,7 +213,7 @@ jobs:
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.10.2
-    
+
       - name: Terraform Init
         working-directory: infrastructure/environment/dev
         run: terraform init
