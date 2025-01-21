@@ -4,8 +4,6 @@ on:
   workflow_dispatch:
   push:
     branches: [ main ]
-    paths:
-      - 'infrastructure/**'
 
 permissions:
   actions: write  # Required for updating repository variables
@@ -83,13 +81,13 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           args: --severity-threshold=high
-        continue-on-error: false  # Set to true if you want to continue on IaC scan failures
+        continue-on-error: false  # Set to true if you to ignore high severity issues
 
   # ------------------------------------------------------------------------
   # 3) Deploy Infrastructure (ECR and ACM)
   # ------------------------------------------------------------------------
   deploy-infrastructure:
-    name: Deploy Infrastructure
+    name: Deploy ECR & ACM
     needs: snyk-scan
     runs-on: ubuntu-latest
     # Dynamically set ENV_SUFFIX based on branch
