@@ -6,7 +6,7 @@ on:
     branches: [ main ]
 
 permissions:
-  actions: write  # Needed only if you still do something like: gh variable set ...
+  actions: write
   contents: read
 
 jobs:
@@ -85,7 +85,7 @@ jobs:
 
   # ------------------------------------------------------------------------
   # 3) Deploy Infrastructure (ECR and ACM)
-  #    and expose the ECR Repo URL as a job output
+  #    - Split out the "registry" domain and the "repository" from Terraform output
   # ------------------------------------------------------------------------
   deploy-infrastructure:
     name: Deploy ECR & ACM
@@ -96,9 +96,10 @@ jobs:
     env:
       ENV_SUFFIX: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
 
-    # Declare job outputs
+    # Expose job outputs (registry and repository)
     outputs:
-      ecr_repo_url: ${{ steps.retrieve_ecr.outputs.ecr_repo_url }}
+      registry: ${{ steps.retrieve_ecr.outputs.registry_name }}
+      repository: ${{ steps.retrieve_ecr.outputs.repository_name }}
 
     steps:
       - name: Checkout
@@ -143,27 +144,36 @@ jobs:
             -target=module.ecr.aws_ecr_repository.ecr \
             -target=module.acm.aws_acm_certificate.chatbot_cert
 
-      - name: Retrieve ECR Repo URL
+      - name: Retrieve ECR Registry and Repo
         id: retrieve_ecr
         working-directory: infrastructure/environment/${{ env.ENV_SUFFIX }}
         run: |
           set -e
-          ecr_repo_url=$(terraform output -raw ecr_repository_url || echo "")
-          if [ -z "$ecr_repo_url" ]; then
+          ecr_url="$(terraform output -raw ecr_repository_url || echo "")"
+          if [ -z "$ecr_url" ]; then
             echo "::error::ECR Repository URL is empty or null"
             exit 1
           fi
 
-          # This sets the step output. The step ID is 'retrieve_ecr'
-          echo "ecr_repo_url=$ecr_repo_url" >> $GITHUB_OUTPUT
+          # Split domain vs. repo name
+          # e.g. "123456789012.dkr.ecr.eu-west-2.amazonaws.com/chatbot-dev"
+          # -> registry_name="123456789012.dkr.ecr.eu-west-2.amazonaws.com"
+          #    repository_name="chatbot-dev"
+          registry_name="${ecr_url%%/*}"
+          repository_name="${ecr_url#*/}"
 
-      - name: Debug ECR Repo URL
+          echo "registry_name=$registry_name" >> $GITHUB_OUTPUT
+          echo "repository_name=$repository_name" >> $GITHUB_OUTPUT
+
+      - name: Debug ECR Values
         run: |
-          echo "DEBUG: ECR Repo URL from Terraform: ${{ steps.retrieve_ecr.outputs.ecr_repo_url }}"
+          echo "Registry Name: ${{ steps.retrieve_ecr.outputs.registry_name }}"
+          echo "Repository Name: ${{ steps.retrieve_ecr.outputs.repository_name }}"
 
   # ------------------------------------------------------------------------
   # 4) Build & Push Docker Images
-  #    using the ECR Repo URL from the deploy-infrastructure job
+  #    - Use the registry domain for "docker login"
+  #    - Use registry/repository for "docker build/tag/push"
   # ------------------------------------------------------------------------
   build-and-push:
     name: Build & Push Docker Images
@@ -191,45 +201,49 @@ jobs:
         run: |
           aws ecr get-login-password --region eu-west-2 \
             | docker login --username AWS --password-stdin \
-              ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}
+              ${{ needs.deploy-infrastructure.outputs.registry }}
 
       - name: Build Backend Image
         run: |
+          # Build a local image first:
           docker build \
             -t ${{ env.ENV_SUFFIX }}-chatbot:backend-${{ env.TAG }} \
             -f Dockerfile.backend .
 
+          # Tag it with the final ECR location
+          # registry + repository
           docker tag \
             ${{ env.ENV_SUFFIX }}-chatbot:backend-${{ env.TAG }} \
-            ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}:backend-latest
+            ${{ needs.deploy-infrastructure.outputs.registry }}/${{ needs.deploy-infrastructure.outputs.repository }}:backend-latest
 
           docker tag \
             ${{ env.ENV_SUFFIX }}-chatbot:backend-${{ env.TAG }} \
-            ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}:backend-${{ env.TAG }}
+            ${{ needs.deploy-infrastructure.outputs.registry }}/${{ needs.deploy-infrastructure.outputs.repository }}:backend-${{ env.TAG }}
 
       - name: Push Backend Image
         run: |
-          docker push ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}:backend-latest
-          docker push ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}:backend-${{ env.TAG }}
+          docker push ${{ needs.deploy-infrastructure.outputs.registry }}/${{ needs.deploy-infrastructure.outputs.repository }}:backend-latest
+          docker push ${{ needs.deploy-infrastructure.outputs.registry }}/${{ needs.deploy-infrastructure.outputs.repository }}:backend-${{ env.TAG }}
 
       - name: Build Frontend Image
         run: |
+          # Build the local image
           docker build \
             -t ${{ env.ENV_SUFFIX }}-chatbot:frontend-${{ env.TAG }} \
             -f Dockerfile.frontend .
 
           docker tag \
             ${{ env.ENV_SUFFIX }}-chatbot:frontend-${{ env.TAG }} \
-            ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}:frontend-latest
+            ${{ needs.deploy-infrastructure.outputs.registry }}/${{ needs.deploy-infrastructure.outputs.repository }}:frontend-latest
 
           docker tag \
             ${{ env.ENV_SUFFIX }}-chatbot:frontend-${{ env.TAG }} \
-            ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}:frontend-${{ env.TAG }}
+            ${{ needs.deploy-infrastructure.outputs.registry }}/${{ needs.deploy-infrastructure.outputs.repository }}:frontend-${{ env.TAG }}
 
       - name: Push Frontend Image
         run: |
-          docker push ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}:frontend-latest
-          docker push ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}:frontend-${{ env.TAG }}
+          docker push ${{ needs.deploy-infrastructure.outputs.registry }}/${{ needs.deploy-infrastructure.outputs.repository }}:frontend-latest
+          docker push ${{ needs.deploy-infrastructure.outputs.registry }}/${{ needs.deploy-infrastructure.outputs.repository }}:frontend-${{ env.TAG }}
 
   # ------------------------------------------------------------------------
   # 5) Deploy Remaining Infrastructure
