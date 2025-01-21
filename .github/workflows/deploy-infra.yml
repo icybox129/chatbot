@@ -139,6 +139,8 @@ jobs:
       - name: Retrieve ECR Repo URL
         id: get_ecr_url
         working-directory: infrastructure/environment/${{ env.ENV_SUFFIX }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PA_TOKEN }}
         run: |
           ecr_repo_url=$(terraform output -raw ecr_repository_url || echo "")
           if [ -z "$ecr_repo_url" ]; then
