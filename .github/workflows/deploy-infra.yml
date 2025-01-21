@@ -6,7 +6,7 @@ on:
     branches: [ main ]
 
 permissions:
-  actions: write  # Required if you're updating repository variables elsewhere
+  actions: write  # Needed only if you still do something like: gh variable set ...
   contents: read
 
 jobs:
@@ -63,7 +63,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       # ------------------ Node.js Dependencies Scan ------------------ #
       - name: Install Node.js Dependencies for Snyk
@@ -81,11 +81,11 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           args: --severity-threshold=high
-        continue-on-error: false  # or true if you want to ignore high severity issues
+        continue-on-error: false  # or true if you want to ignore high-severity issues
 
   # ------------------------------------------------------------------------
   # 3) Deploy Infrastructure (ECR and ACM)
-  #    - Capture the ECR Repo URL as a job output
+  #    and expose the ECR Repo URL as a job output
   # ------------------------------------------------------------------------
   deploy-infrastructure:
     name: Deploy ECR & ACM
@@ -96,7 +96,7 @@ jobs:
     env:
       ENV_SUFFIX: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
 
-    # Declare job outputs here
+    # Declare job outputs
     outputs:
       ecr_repo_url: ${{ steps.retrieve_ecr.outputs.ecr_repo_url }}
 
@@ -128,14 +128,20 @@ jobs:
         env:
           TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-        run: terraform plan -target=module.ecr.aws_ecr_repository.ecr -target=module.acm.aws_acm_certificate.chatbot_cert
+        run: |
+          terraform plan \
+            -target=module.ecr.aws_ecr_repository.ecr \
+            -target=module.acm.aws_acm_certificate.chatbot_cert
 
       - name: Terraform Apply (ECR and ACM)
         working-directory: infrastructure/environment/${{ env.ENV_SUFFIX }}
         env:
           TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-        run: terraform apply -auto-approve -target=module.ecr.aws_ecr_repository.ecr -target=module.acm.aws_acm_certificate.chatbot_cert
+        run: |
+          terraform apply -auto-approve \
+            -target=module.ecr.aws_ecr_repository.ecr \
+            -target=module.acm.aws_acm_certificate.chatbot_cert
 
       - name: Retrieve ECR Repo URL
         id: retrieve_ecr
@@ -148,16 +154,16 @@ jobs:
             exit 1
           fi
 
-          # Store it as a step output:
+          # This sets the step output. The step ID is 'retrieve_ecr'
           echo "ecr_repo_url=$ecr_repo_url" >> $GITHUB_OUTPUT
 
       - name: Debug ECR Repo URL
         run: |
-          echo "DEBUG: ECR_REPO_URL from Terraform: ${{ steps.retrieve_ecr.outputs.ecr_repo_url }}"
+          echo "DEBUG: ECR Repo URL from Terraform: ${{ steps.retrieve_ecr.outputs.ecr_repo_url }}"
 
   # ------------------------------------------------------------------------
   # 4) Build & Push Docker Images
-  #    - Use the ECR Repo URL from the previous job via 'needs'
+  #    using the ECR Repo URL from the deploy-infrastructure job
   # ------------------------------------------------------------------------
   build-and-push:
     name: Build & Push Docker Images
@@ -184,8 +190,9 @@ jobs:
       - name: Docker Login to ECR
         run: |
           aws ecr get-login-password --region eu-west-2 \
-            | docker login --username AWS --password-stdin ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}
-              
+            | docker login --username AWS --password-stdin \
+              ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}
+
       - name: Build Backend Image
         run: |
           docker build \
