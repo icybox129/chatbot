@@ -148,15 +148,9 @@ jobs:
             exit 1
           fi
           echo "ECR Repo URL from Terraform: $ecr_repo_url"
-
-          # 1) Make it a step output to be used in job outputs
-          echo "ecr_url=$ecr_repo_url" >> $GITHUB_OUTPUT
-
-          # 2) (Optional) Update GH repository variable for future runs
-          gh variable set ECR_REPO_URL --body "$ecr_repo_url"
-
-          echo "::add-mask::$ecr_repo_url"
-          echo "Successfully saved ECR_REPO_URL to repository variables."
+      
+          # Use the old set-output command:
+          echo "::set-output name=ecr_url::$ecr_repo_url"
 
       - name: Debug ECR Repo URL (from job output)
         run: |
