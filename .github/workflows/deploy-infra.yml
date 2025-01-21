@@ -6,183 +6,256 @@ on:
     branches: [ main ]
 
 permissions:
-  actions: write
+  actions: write  # Required for updating repository variables
   contents: read
 
 jobs:
+  # ------------------------------------------------------------------------
+  # 1) Run Unit Tests (Python + JavaScript)
+  # ------------------------------------------------------------------------
   run-tests:
     name: Run Unit Tests
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Set Up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: 3.10.12
-    - name: Install Python Dependencies
-      run: |
-        python -m venv venv
-        source venv/bin/activate
-        pip install --upgrade pip
-        pip install -r requirements.txt
-    - name: Run Python Tests
-      env:
-        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      run: |
-        source venv/bin/activate
-        pytest tests/test_app.py tests/test_preprocessing.py
-    - name: Set Up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: 20.9.0
-    - name: Install Node.js Dependencies
-      run: npm install
-    - name: Run JavaScript Tests
-      run: npm test
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
+      # ------------------ Python Tests ------------------ #
+      - name: Set Up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.10.12
+
+      - name: Install Python Dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Python Unit Tests
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: |
+          source venv/bin/activate
+          pytest tests/test_app.py tests/test_preprocessing.py
+
+      # ------------------ JavaScript Tests ------------------ #
+      - name: Set Up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20.9.0
+
+      - name: Install Node.js Dependencies
+        run: npm install
+
+      - name: Run JavaScript Unit Tests
+        run: npm test
+
+  # ------------------------------------------------------------------------
+  # 2) Snyk Scans (Python, Node.js, and Terraform IaC)
+  # ------------------------------------------------------------------------
   snyk-scan:
-    name: Security Scan
+    name: Snyk Scan
     needs: run-tests
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Install Node.js Dependencies
-      run: npm install
-    - name: Run Snyk Node.js Scan
-      uses: snyk/actions/node@master
-      env:
-        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-    - name: Run Snyk IaC Scan
-      uses: snyk/actions/iac@master
-      env:
-        SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      with:
-        args: --severity-threshold=high
+      - name: Checkout Code
+        uses: actions/checkout@v2
 
+      # ------------------ Node.js Dependencies Scan ------------------ #
+      - name: Install Node.js Dependencies for Snyk
+        run: npm install
+
+      - name: Run Snyk Node.js Scan
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      # ------------------ Terraform IaC Scan ------------------ #
+      - name: Run Snyk Terraform IaC Scan
+        uses: snyk/actions/iac@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+        continue-on-error: false  # Set to true if you to ignore high severity issues
+
+  # ------------------------------------------------------------------------
+  # 3) Deploy Infrastructure (ECR and ACM)
+  # ------------------------------------------------------------------------
   deploy-infrastructure:
     name: Deploy ECR & ACM
     needs: snyk-scan
     runs-on: ubuntu-latest
+    # Dynamically set ENV_SUFFIX based on branch
     env:
       ENV_SUFFIX: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
-    outputs:
-      ecr_url: ${{ steps.ecr_details.outputs.ecr_url }}
-      registry: ${{ steps.ecr_details.outputs.registry }}
-      repository: ${{ steps.ecr_details.outputs.repository }}
     steps:
-    - uses: actions/checkout@v3
-    - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: eu-west-2
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v2
-      with:
-        terraform_version: 1.10.2
-        terraform_wrapper: false
-    - name: Terraform Init
-      working-directory: infrastructure/environment/${{ env.ENV_SUFFIX }}
-      env:
-        TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      run: terraform init
-    - name: Deploy ECR & ACM
-      working-directory: infrastructure/environment/${{ env.ENV_SUFFIX }}
-      env:
-        TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-      run: |
-        terraform apply -auto-approve \
-          -target=module.ecr.aws_ecr_repository.ecr \
-          -target=module.acm.aws_acm_certificate.chatbot_cert
-    - name: Get ECR Details
-      id: ecr_details
-      working-directory: infrastructure/environment/${{ env.ENV_SUFFIX }}
-      run: |
-        ecr_url=$(terraform output -raw ecr_repository_url)
-        registry="${ecr_url%%/*}"
-        repository="${ecr_url#*/}"
-        echo "ecr_url=${ecr_url}" >> $GITHUB_OUTPUT
-        echo "registry=${registry}" >> $GITHUB_OUTPUT
-        echo "repository=${repository}" >> $GITHUB_OUTPUT
-        echo "Debug values:"
-        echo "ECR URL: ${ecr_url}"
-        echo "Registry: ${registry}"
-        echo "Repository: ${repository}"
+      - name: Checkout
+        uses: actions/checkout@v3
 
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-2
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.10.2
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        working-directory: infrastructure/environment/${{ env.ENV_SUFFIX }}
+        env:
+          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: terraform init
+
+      - name: Terraform Plan (ECR and ACM)
+        working-directory: infrastructure/environment/${{ env.ENV_SUFFIX }}
+        env:
+          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+        run: terraform plan -target=module.ecr.aws_ecr_repository.ecr -target=module.acm.aws_acm_certificate.chatbot_cert
+
+      - name: Terraform Apply (ECR and ACM)
+        working-directory: infrastructure/environment/${{ env.ENV_SUFFIX }}
+        env:
+          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+        run: terraform apply -auto-approve -target=module.ecr.aws_ecr_repository.ecr -target=module.acm.aws_acm_certificate.chatbot_cert
+
+      - name: Retrieve and Update ECR Repo URL
+        working-directory: infrastructure/environment/${{ env.ENV_SUFFIX }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PA_TOKEN }}
+        run: |
+          set -e
+          ecr_repo_url=$(terraform output -raw ecr_repository_url || echo "")
+          if [ -z "$ecr_repo_url" ]; then
+            echo "::error::ECR Repository URL is empty or null"
+            exit 1
+          fi
+          gh variable set ECR_REPO_URL --body "$ecr_repo_url"
+          echo "::add-mask::$ecr_repo_url"
+          echo "Successfully saved ECR_REPO_URL to repository variables."
+
+      - name: Debug ECR Repo URL
+        run: |
+          echo "DEBUG: Using ECR_REPO_URL: ${{ vars.ECR_REPO_URL }}"
+
+  # ------------------------------------------------------------------------
+  # 4) Build & Push Docker Images
+  # ------------------------------------------------------------------------
   build-and-push:
     name: Build & Push Docker Images
     needs: deploy-infrastructure
     runs-on: ubuntu-latest
     env:
       ENV_SUFFIX: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
-      ECR_URL: ${{ needs.deploy-infrastructure.outputs.ecr_url }}
-      REGISTRY: ${{ needs.deploy-infrastructure.outputs.registry }}
-      REPOSITORY: ${{ needs.deploy-infrastructure.outputs.repository }}
-      TAG: ${{ github.sha }}
-    steps:
-    - uses: actions/checkout@v3
-    - name: Verify Environment Variables
-      run: |
-        echo "ECR URL: ${ECR_URL}"
-        echo "Registry: ${REGISTRY}"
-        echo "Repository: ${REPOSITORY}"
-        echo "Tag: ${TAG}"
-        echo "Environment: ${ENV_SUFFIX}"
-        if [ -z "${REGISTRY}" ]; then
-          echo "Error: Registry is empty"
-          exit 1
-        fi
-    - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: eu-west-2
-    - name: ECR Login
-      run: aws ecr get-login-password --region eu-west-2 | docker login --username AWS --password-stdin ${REGISTRY}
-    - name: Build & Push Backend
-      run: |
-        docker build -t ${ENV_SUFFIX}-chatbot:backend-${TAG} -f Dockerfile.backend .
-        docker tag ${ENV_SUFFIX}-chatbot:backend-${TAG} ${REGISTRY}/${REPOSITORY}:backend-latest
-        docker tag ${ENV_SUFFIX}-chatbot:backend-${TAG} ${REGISTRY}/${REPOSITORY}:backend-${TAG}
-        docker push ${REGISTRY}/${REPOSITORY}:backend-latest
-        docker push ${REGISTRY}/${REPOSITORY}:backend-${TAG}
-    - name: Build & Push Frontend
-      run: |
-        docker build -t ${ENV_SUFFIX}-chatbot:frontend-${TAG} -f Dockerfile.frontend .
-        docker tag ${ENV_SUFFIX}-chatbot:frontend-${TAG} ${REGISTRY}/${REPOSITORY}:frontend-latest
-        docker tag ${ENV_SUFFIX}-chatbot:frontend-${TAG} ${REGISTRY}/${REPOSITORY}:frontend-${TAG}
-        docker push ${REGISTRY}/${REPOSITORY}:frontend-latest
-        docker push ${REGISTRY}/${REPOSITORY}:frontend-${TAG}
+      ECR_REPO_URL: >
+        ${{ github.ref_name == 'main' 
+            && '346596735478.dkr.ecr.eu-west-2.amazonaws.com/chatbot-prod' 
+            || '346596735478.dkr.ecr.eu-west-2.amazonaws.com/chatbot-dev' }}
 
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-2
+
+      - name: Create unique Docker tag
+        id: docker_tag
+        run: echo "TAG=${GITHUB_SHA:0:7}" >> $GITHUB_ENV
+
+      - name: Docker Login to ECR
+        run: |
+          aws ecr get-login-password --region eu-west-2 \
+            | docker login --username AWS --password-stdin $ECR_REPO_URL
+
+      - name: Build Backend Image
+        run: |
+          docker build \
+            -t ${{ env.ENV_SUFFIX }}-chatbot:backend-${{ env.TAG }} \
+            -f Dockerfile.backend .
+          
+          # Tag with "latest"
+          docker tag \
+            ${{ env.ENV_SUFFIX }}-chatbot:backend-${{ env.TAG }} \
+            $ECR_REPO_URL:backend-latest
+          
+          # Tag with the commit SHA
+          docker tag \
+            ${{ env.ENV_SUFFIX }}-chatbot:backend-${{ env.TAG }} \
+            $ECR_REPO_URL:backend-${{ env.TAG }}
+
+      - name: Push Backend Image
+        run: |
+          docker push $ECR_REPO_URL:backend-latest
+          docker push $ECR_REPO_URL:backend-${{ env.TAG }}
+
+      - name: Build Frontend Image
+        run: |
+          docker build \
+            -t ${{ env.ENV_SUFFIX }}-chatbot:frontend-${{ env.TAG }} \
+            -f Dockerfile.frontend .
+          
+          docker tag \
+            ${{ env.ENV_SUFFIX }}-chatbot:frontend-${{ env.TAG }} \
+            $ECR_REPO_URL:frontend-latest
+          
+          docker tag \
+            ${{ env.ENV_SUFFIX }}-chatbot:frontend-${{ env.TAG }} \
+            $ECR_REPO_URL:frontend-${{ env.TAG }}
+
+      - name: Push Frontend Image
+        run: |
+          docker push $ECR_REPO_URL:frontend-latest
+          docker push $ECR_REPO_URL:frontend-${{ env.TAG }}
+
+  # ------------------------------------------------------------------------
+  # 5) Deploy Remaining Infrastructure
+  # ------------------------------------------------------------------------
   deploy-remaining:
     name: Deploy Remaining Infrastructure
     needs: build-and-push
     runs-on: ubuntu-latest
     env:
       ENV_SUFFIX: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
+
     steps:
-    - uses: actions/checkout@v3
-    - name: Configure AWS Credentials
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: eu-west-2
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v2
-      with:
-        terraform_version: 1.10.2
-    - name: Terraform Init
-      working-directory: infrastructure/environment/${{ env.ENV_SUFFIX }}
-      run: terraform init
-    - name: Deploy Infrastructure
-      working-directory: infrastructure/environment/${{ env.ENV_SUFFIX }}
-      env:
-        TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-      run: terraform apply -auto-approve
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-2
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.10.2
+
+      - name: Terraform Init
+        working-directory: infrastructure/environment/${{ env.ENV_SUFFIX }}
+        run: terraform init
+
+      - name: Terraform Apply
+        working-directory: infrastructure/environment/${{ env.ENV_SUFFIX }}
+        env:
+          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+        run: terraform apply -auto-approve
