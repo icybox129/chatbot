@@ -53,7 +53,17 @@ resource "aws_cloudwatch_dashboard" "dashboard" {
           "region" : var.aws_region,
           "stat" : "Sum",
           "title" : "ALB Request Count",
-          "period" : 60
+          "period" : 60,
+          "yAxis" : {
+            "left" : {
+              "min" : 0,
+              "max" : 100
+            },
+            "right" : {
+              "min" : 0,
+              "max" : 100
+            }
+          }
         }
       },
       # ALB 4XX Errors
