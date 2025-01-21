@@ -197,11 +197,11 @@ jobs:
         id: docker_tag
         run: echo "TAG=${GITHUB_SHA:0:7}" >> $GITHUB_ENV
 
+      - name: Debug registry variable
+        run: echo "REGISTRY = '${{ needs.deploy-infrastructure.outputs.registry }}'"
+      
       - name: Docker Login to ECR
-        run: |
-          aws ecr get-login-password --region eu-west-2 \
-            | docker login --username AWS --password-stdin \
-              ${{ needs.deploy-infrastructure.outputs.registry }}
+        run: docker login --username AWS --password-stdin ${{ needs.deploy-infrastructure.outputs.registry }}
 
       - name: Build Backend Image
         run: |
