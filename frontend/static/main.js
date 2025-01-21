@@ -41,13 +41,6 @@ function renderResponse(text, sources = []) {
     return responseHtml;
 }
 
-// function renderCodeBlock(language, code) {
-//     const normalizedLanguage = language.toLowerCase() === 'terraform' ? 'hcl' : language.toLowerCase();
-//     const sanitizedLanguage = DOMPurify.sanitize(normalizedLanguage, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
-//     const sanitizedCode = DOMPurify.sanitize(code, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
-//     return `<pre><code class="language-${sanitizedLanguage}">${sanitizedCode}</code></pre>`;
-// }
-
 // Dynamically add user and bot messages
 function sendMessage() {
     const userInput = document.getElementById('user-input');
@@ -188,9 +181,6 @@ function initialize() {
   
   // Move the DOMContentLoaded listener outside of initialize()
   document.addEventListener('DOMContentLoaded', initialize);
-  
-  // Remove the immediate call to initialize()
-  // initialize(); // No longer needed
   
   // Conditional export for testing
   if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
