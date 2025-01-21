@@ -1,4 +1,4 @@
-name: Deploy Infrastructure and Application
+name: Deploy
 
 on:
   workflow_dispatch:
@@ -6,191 +6,258 @@ on:
     branches: [ main ]
 
 permissions:
-  actions: write
+  actions: write  # Required if you're updating repository variables elsewhere
   contents: read
 
 jobs:
-  # ----------------------------------------------------
-  # 1. Run Tests
-  # ----------------------------------------------------
-  test:
-    name: Run Tests
+  # ------------------------------------------------------------------------
+  # 1) Run Unit Tests (Python + JavaScript)
+  # ------------------------------------------------------------------------
+  run-tests:
+    name: Run Unit Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-      # Python Tests
-      - uses: actions/setup-python@v4
+      # ------------------ Python Tests ------------------ #
+      - name: Set Up Python
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.10.12'
-      
-      - name: Run Python Tests
+          python-version: 3.10.12
+
+      - name: Install Python Dependencies
         run: |
           python -m venv venv
           source venv/bin/activate
+          pip install --upgrade pip
           pip install -r requirements.txt
-          pytest tests/
+
+      - name: Run Python Unit Tests
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
-      # JavaScript Tests  
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '20.9.0'
-      
-      - name: Run JS Tests
         run: |
-          npm install
-          npm test
+          source venv/bin/activate
+          pytest tests/test_app.py tests/test_preprocessing.py
 
-  # ----------------------------------------------------
-  # 2. Security Scans
-  # ----------------------------------------------------
-  security:
-    needs: test
+      # ------------------ JavaScript Tests ------------------ #
+      - name: Set Up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20.9.0
+
+      - name: Install Node.js Dependencies
+        run: npm install
+
+      - name: Run JavaScript Unit Tests
+        run: npm test
+
+  # ------------------------------------------------------------------------
+  # 2) Snyk Scans (Python, Node.js, and Terraform IaC)
+  # ------------------------------------------------------------------------
+  snyk-scan:
+    name: Snyk Scan
+    needs: run-tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout Code
+        uses: actions/checkout@v2
 
-      # Node.js Security Scan
-      - name: Snyk Node.js Scan
+      # ------------------ Node.js Dependencies Scan ------------------ #
+      - name: Install Node.js Dependencies for Snyk
+        run: npm install
+
+      - name: Run Snyk Node.js Scan
         uses: snyk/actions/node@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
-      # Infrastructure Security Scan  
-      - name: Snyk IaC Scan
+      # ------------------ Terraform IaC Scan ------------------ #
+      - name: Run Snyk Terraform IaC Scan
         uses: snyk/actions/iac@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           args: --severity-threshold=high
+        continue-on-error: false  # or true if you want to ignore high severity issues
 
-  # ----------------------------------------------------
-  # 3. Deploy Base Infrastructure
-  # ----------------------------------------------------
-  deploy-base:
-    needs: security
+  # ------------------------------------------------------------------------
+  # 3) Deploy Infrastructure (ECR and ACM)
+  #    - Capture the ECR Repo URL as a job output
+  # ------------------------------------------------------------------------
+  deploy-infrastructure:
+    name: Deploy ECR & ACM
+    needs: snyk-scan
     runs-on: ubuntu-latest
+
+    # Dynamically set ENV_SUFFIX based on branch
     env:
       ENV_SUFFIX: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
-    
-    steps:
-      - uses: actions/checkout@v3
 
-      # AWS Authentication
-      - uses: aws-actions/configure-aws-credentials@v2
+    # Declare job outputs here
+    outputs:
+      ecr_repo_url: ${{ steps.retrieve_ecr.outputs.ecr_repo_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-west-2
 
-      # Terraform Setup & Deploy
-      - uses: hashicorp/setup-terraform@v2
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
         with:
-          terraform_version: '1.10.2'
+          terraform_version: 1.10.2
           terraform_wrapper: false
 
-      - name: Deploy ECR & ACM
+      - name: Terraform Init
+        working-directory: infrastructure/environment/${{ env.ENV_SUFFIX }}
+        env:
+          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: terraform init
+
+      - name: Terraform Plan (ECR and ACM)
         working-directory: infrastructure/environment/${{ env.ENV_SUFFIX }}
         env:
           TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-        run: |
-          terraform init
-          terraform apply -auto-approve \
-            -target=module.ecr.aws_ecr_repository.ecr \
-            -target=module.acm.aws_acm_certificate.chatbot_cert
+        run: terraform plan -target=module.ecr.aws_ecr_repository.ecr -target=module.acm.aws_acm_certificate.chatbot_cert
 
-      - name: Save ECR URL
-        run: |
-          terraform output -raw ecr_repository_url > ecr_repo_url.txt
-          
-      - uses: actions/upload-artifact@v3
-        with:
-          name: ecr-url-artifact
-          path: ecr_repo_url.txt
+      - name: Terraform Apply (ECR and ACM)
+        working-directory: infrastructure/environment/${{ env.ENV_SUFFIX }}
+        env:
+          TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+        run: terraform apply -auto-approve -target=module.ecr.aws_ecr_repository.ecr -target=module.acm.aws_acm_certificate.chatbot_cert
 
-  # ----------------------------------------------------
-  # 4. Build & Push Docker Images
-  # ----------------------------------------------------
-  docker:
-    needs: deploy-base
+      - name: Retrieve ECR Repo URL
+        id: retrieve_ecr
+        working-directory: infrastructure/environment/${{ env.ENV_SUFFIX }}
+        run: |
+          set -e
+          ecr_repo_url=$(terraform output -raw ecr_repository_url || echo "")
+          if [ -z "$ecr_repo_url" ]; then
+            echo "::error::ECR Repository URL is empty or null"
+            exit 1
+          fi
+
+          # Store it as a step output:
+          echo "ecr_repo_url=$ecr_repo_url" >> $GITHUB_OUTPUT
+
+      - name: Debug ECR Repo URL
+        run: |
+          echo "DEBUG: ECR_REPO_URL from Terraform: ${{ steps.retrieve_ecr.outputs.ecr_repo_url }}"
+
+  # ------------------------------------------------------------------------
+  # 4) Build & Push Docker Images
+  #    - Use the ECR Repo URL from the previous job via 'needs'
+  # ------------------------------------------------------------------------
+  build-and-push:
+    name: Build & Push Docker Images
+    needs: deploy-infrastructure
     runs-on: ubuntu-latest
     env:
       ENV_SUFFIX: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
-      TAG: ${GITHUB_SHA::7}
-    
-    steps:
-      - uses: actions/checkout@v3
 
-      # AWS Authentication
-      - uses: aws-actions/configure-aws-credentials@v2
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-west-2
 
-      # Get ECR URL
-      - uses: actions/download-artifact@v3
-        with:
-          name: ecr-url-artifact
+      - name: Create unique Docker tag
+        id: docker_tag
+        run: echo "TAG=${GITHUB_SHA:0:7}" >> $GITHUB_ENV
 
-      # ECR Login
-      - name: Login to ECR
+      - name: Docker Login to ECR
         run: |
-          ECR_URL=$(cat ecr_repo_url.txt)
-          aws ecr get-login-password | docker login --username AWS --password-stdin "$ECR_URL"
+          aws ecr get-login-password --region eu-west-2 \
+            | docker login --username AWS --password-stdin \
+              ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}
 
-      # Build & Push Backend
-      - name: Backend Image
+      - name: Build Backend Image
         run: |
-          ECR_URL=$(cat ecr_repo_url.txt)
-          docker build -t ${{ env.ENV_SUFFIX }}-chatbot:backend-${{ env.TAG }} -f Dockerfile.backend .
-          docker tag ${{ env.ENV_SUFFIX }}-chatbot:backend-${{ env.TAG }} "$ECR_URL:backend-latest"
-          docker tag ${{ env.ENV_SUFFIX }}-chatbot:backend-${{ env.TAG }} "$ECR_URL:backend-${{ env.TAG }}"
-          docker push "$ECR_URL:backend-latest"
-          docker push "$ECR_URL:backend-${{ env.TAG }}"
+          docker build \
+            -t ${{ env.ENV_SUFFIX }}-chatbot:backend-${{ env.TAG }} \
+            -f Dockerfile.backend .
 
-      # Build & Push Frontend
-      - name: Frontend Image
+          docker tag \
+            ${{ env.ENV_SUFFIX }}-chatbot:backend-${{ env.TAG }} \
+            ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}:backend-latest
+
+          docker tag \
+            ${{ env.ENV_SUFFIX }}-chatbot:backend-${{ env.TAG }} \
+            ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}:backend-${{ env.TAG }}
+
+      - name: Push Backend Image
         run: |
-          ECR_URL=$(cat ecr_repo_url.txt)
-          docker build -t ${{ env.ENV_SUFFIX }}-chatbot:frontend-${{ env.TAG }} -f Dockerfile.frontend .
-          docker tag ${{ env.ENV_SUFFIX }}-chatbot:frontend-${{ env.TAG }} "$ECR_URL:frontend-latest"
-          docker tag ${{ env.ENV_SUFFIX }}-chatbot:frontend-${{ env.TAG }} "$ECR_URL:frontend-${{ env.TAG }}"
-          docker push "$ECR_URL:frontend-latest"
-          docker push "$ECR_URL:frontend-${{ env.TAG }}"
+          docker push ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}:backend-latest
+          docker push ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}:backend-${{ env.TAG }}
 
-  # ----------------------------------------------------
-  # 5. Deploy Application Infrastructure
-  # ----------------------------------------------------
-  deploy-app:
-    needs: docker
+      - name: Build Frontend Image
+        run: |
+          docker build \
+            -t ${{ env.ENV_SUFFIX }}-chatbot:frontend-${{ env.TAG }} \
+            -f Dockerfile.frontend .
+
+          docker tag \
+            ${{ env.ENV_SUFFIX }}-chatbot:frontend-${{ env.TAG }} \
+            ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}:frontend-latest
+
+          docker tag \
+            ${{ env.ENV_SUFFIX }}-chatbot:frontend-${{ env.TAG }} \
+            ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}:frontend-${{ env.TAG }}
+
+      - name: Push Frontend Image
+        run: |
+          docker push ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}:frontend-latest
+          docker push ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}:frontend-${{ env.TAG }}
+
+  # ------------------------------------------------------------------------
+  # 5) Deploy Remaining Infrastructure
+  # ------------------------------------------------------------------------
+  deploy-remaining:
+    name: Deploy Remaining Infrastructure
+    needs: build-and-push
     runs-on: ubuntu-latest
     env:
       ENV_SUFFIX: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
-    
+
     steps:
-      - uses: actions/checkout@v3
-      
-      - uses: aws-actions/configure-aws-credentials@v2
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-west-2
 
-      - uses: hashicorp/setup-terraform@v2
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v2
         with:
-          terraform_version: '1.10.2'
+          terraform_version: 1.10.2
 
-      - name: Deploy Remaining Infrastructure
+      - name: Terraform Init
+        working-directory: infrastructure/environment/${{ env.ENV_SUFFIX }}
+        run: terraform init
+
+      - name: Terraform Apply
         working-directory: infrastructure/environment/${{ env.ENV_SUFFIX }}
         env:
           TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-        run: |
-          terraform init
-          terraform apply -auto-approve
+        run: terraform apply -auto-approve
