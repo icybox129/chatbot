@@ -138,7 +138,13 @@ jobs:
         id: get_ecr_url
         working-directory: infrastructure/environment/${{ env.ENV_SUFFIX }}
         run: |
-          echo "ecr_url=$(terraform output -raw ecr_repository_url)" >> $GITHUB_OUTPUT
+          ECR_URL=$(terraform output -raw ecr_repository_url)
+          if [[ -z "$ECR_URL" ]]; then
+            echo "Error: ECR URL is empty"
+            exit 1
+          fi
+          echo "ecr_url=$ECR_URL" >> $GITHUB_OUTPUT
+          echo "Retrieved ECR URL: $ECR_URL"
 
       - name: Debug ECR Repo URL
         run: |
