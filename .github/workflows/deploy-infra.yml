@@ -123,18 +123,20 @@ jobs:
         env:
           TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-        run: terraform plan \
-          -target=module.ecr.aws_ecr_repository.ecr \
-          -target=module.acm.aws_acm_certificate.chatbot_cert
+        run: |
+            terraform plan \
+              -target=module.ecr.aws_ecr_repository.ecr \
+              -target=module.acm.aws_acm_certificate.chatbot_cert
 
       - name: Terraform Apply (ECR and ACM)
         working-directory: infrastructure/environment/${{ env.ENV_SUFFIX }}
         env:
           TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
-        run: terraform apply -auto-approve \
-          -target=module.ecr.aws_ecr_repository.ecr \
-          -target=module.acm.aws_acm_certificate.chatbot_cert
+        run: |
+          terraform apply -auto-approve \
+            -target=module.ecr.aws_ecr_repository.ecr \
+            -target=module.acm.aws_acm_certificate.chatbot_cert
 
       # Retrieve the ECR Repo URL from Terraform and save it to a file
       - name: Retrieve ECR Repo URL
