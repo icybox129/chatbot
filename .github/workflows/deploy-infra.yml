@@ -155,6 +155,7 @@ jobs:
     name: Build & Push Docker Images
     needs: deploy-infrastructure
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -166,6 +167,18 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-west-2
 
+      - name: Determine environment (dev or prod)
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "ENV_SUFFIX=prod" >> $GITHUB_ENV
+          else
+            echo "ENV_SUFFIX=dev" >> $GITHUB_ENV
+          fi
+
+      - name: Create unique Docker tag
+        id: docker_tag
+        run: echo "TAG=${GITHUB_SHA:0:7}" >> $GITHUB_ENV
+
       - name: Docker Login to ECR
         run: |
           aws ecr get-login-password --region eu-west-2 \
@@ -173,23 +186,44 @@ jobs:
 
       - name: Build Backend Image
         run: |
-          docker build -t chatbot-dev:backend-latest -f Dockerfile.backend .
-          docker tag chatbot-dev:backend-latest \
+          # Build with unique image name: chatbot-dev or chatbot-prod
+          docker build \
+            -t ${{ env.ENV_SUFFIX }}-chatbot:backend-${{ env.TAG }} \
+            -f Dockerfile.backend .
+          
+          # Tag the newly built image with "latest" so your ECS references keep working
+          docker tag \
+            ${{ env.ENV_SUFFIX }}-chatbot:backend-${{ env.TAG }} \
             ${{ vars.ECR_REPO_URL }}:backend-latest
+          
+          # Also tag the newly built image with the commit SHA (or run number)
+          docker tag \
+            ${{ env.ENV_SUFFIX }}-chatbot:backend-${{ env.TAG }} \
+            ${{ vars.ECR_REPO_URL }}:backend-${{ env.TAG }}
 
       - name: Push Backend Image
         run: |
           docker push ${{ vars.ECR_REPO_URL }}:backend-latest
+          docker push ${{ vars.ECR_REPO_URL }}:backend-${{ env.TAG }}
 
       - name: Build Frontend Image
         run: |
-          docker build -t chatbot-dev:frontend-latest -f Dockerfile.frontend .
-          docker tag chatbot-dev:frontend-latest \
+          docker build \
+            -t ${{ env.ENV_SUFFIX }}-chatbot:frontend-${{ env.TAG }} \
+            -f Dockerfile.frontend .
+          
+          docker tag \
+            ${{ env.ENV_SUFFIX }}-chatbot:frontend-${{ env.TAG }} \
             ${{ vars.ECR_REPO_URL }}:frontend-latest
+          
+          docker tag \
+            ${{ env.ENV_SUFFIX }}-chatbot:frontend-${{ env.TAG }} \
+            ${{ vars.ECR_REPO_URL }}:frontend-${{ env.TAG }}
 
       - name: Push Frontend Image
         run: |
           docker push ${{ vars.ECR_REPO_URL }}:frontend-latest
+          docker push ${{ vars.ECR_REPO_URL }}:frontend-${{ env.TAG }}
 
   # ------------------------------------------------------------------------
   # 5) Deploy Remaining Infrastructure
