@@ -4,9 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [ main ]
-    paths:
-      - 'infrastructure/**'
-
+    
 permissions:
   actions: write  # Required for updating repository variables
   contents: read
@@ -89,7 +87,7 @@ jobs:
   # 3) Deploy Infrastructure (ECR and ACM)
   # ------------------------------------------------------------------------
   deploy-infrastructure:
-    name: Deploy Infrastructure
+    name: Deploy ECR & ACM
     needs: snyk-scan
     runs-on: ubuntu-latest
     # Dynamically set ENV_SUFFIX based on branch
