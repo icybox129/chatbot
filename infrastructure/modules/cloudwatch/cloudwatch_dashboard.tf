@@ -41,29 +41,23 @@ resource "aws_cloudwatch_dashboard" "dashboard" {
       {
         "type" : "metric",
         "x" : 0,
-        "y" : 6,
-        "width" : 12,
+        "y" : 18,
+        "width" : 6,
         "height" : 6,
         "properties" : {
           "metrics" : [
-            ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", var.alb_arn_suffix]
+            ["AWS/ApplicationELB", "RequestCount", "TargetGroup", var.tg_arn_suffix, "AvailabilityZone", "eu-west-2a", "LoadBalancer", var.alb_arn_suffix, { "region" : "eu-west-2" }]
           ],
           "view" : "gauge",
-          "stacked" : false,
-          "region" : var.aws_region,
-          "stat" : "Sum",
-          "title" : "ALB Request Count",
-          "period" : 60,
+          "region" : "eu-west-2",
           "yAxis" : {
             "left" : {
               "min" : 0,
               "max" : 100
-            },
-            "right" : {
-              "min" : 0,
-              "max" : 100
             }
-          }
+          },
+          "period" : 30,
+          "stat" : "Average"
         }
       },
       # ALB 4XX Errors
