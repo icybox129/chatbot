@@ -6,7 +6,7 @@ on:
     branches: [ main ]
 
 permissions:
-  actions: write
+  actions: write  # Only needed if you do something like `gh variable set ...`
   contents: read
 
 jobs:
@@ -85,7 +85,7 @@ jobs:
 
   # ------------------------------------------------------------------------
   # 3) Deploy Infrastructure (ECR and ACM)
-  #    - Split out the "registry" domain and the "repository" from Terraform output
+  #    - Split out the "registry" domain and "repository" from Terraform output
   # ------------------------------------------------------------------------
   deploy-infrastructure:
     name: Deploy ECR & ACM
@@ -155,7 +155,6 @@ jobs:
             exit 1
           fi
 
-          # Split domain vs. repo name
           # e.g. "123456789012.dkr.ecr.eu-west-2.amazonaws.com/chatbot-dev"
           # -> registry_name="123456789012.dkr.ecr.eu-west-2.amazonaws.com"
           #    repository_name="chatbot-dev"
@@ -199,19 +198,21 @@ jobs:
 
       - name: Debug registry variable
         run: echo "REGISTRY = '${{ needs.deploy-infrastructure.outputs.registry }}'"
-      
+
+      # Corrected Docker login command: pipe the ECR password
       - name: Docker Login to ECR
-        run: docker login --username AWS --password-stdin ${{ needs.deploy-infrastructure.outputs.registry }}
+        run: |
+          aws ecr get-login-password --region eu-west-2 \
+            | docker login --username AWS --password-stdin \
+              ${{ needs.deploy-infrastructure.outputs.registry }}
 
       - name: Build Backend Image
         run: |
-          # Build a local image first:
           docker build \
             -t ${{ env.ENV_SUFFIX }}-chatbot:backend-${{ env.TAG }} \
             -f Dockerfile.backend .
 
-          # Tag it with the final ECR location
-          # registry + repository
+          # Tag with registry/repo
           docker tag \
             ${{ env.ENV_SUFFIX }}-chatbot:backend-${{ env.TAG }} \
             ${{ needs.deploy-infrastructure.outputs.registry }}/${{ needs.deploy-infrastructure.outputs.repository }}:backend-latest
@@ -227,7 +228,6 @@ jobs:
 
       - name: Build Frontend Image
         run: |
-          # Build the local image
           docker build \
             -t ${{ env.ENV_SUFFIX }}-chatbot:frontend-${{ env.TAG }} \
             -f Dockerfile.frontend .
