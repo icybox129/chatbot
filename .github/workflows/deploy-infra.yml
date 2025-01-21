@@ -184,9 +184,8 @@ jobs:
       - name: Docker Login to ECR
         run: |
           aws ecr get-login-password --region eu-west-2 \
-            | docker login --username AWS --password-stdin \
-              ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}
-
+            | docker login --username AWS --password-stdin ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}
+              
       - name: Build Backend Image
         run: |
           docker build \
