@@ -33,15 +33,14 @@ resource "aws_alb_listener" "alb_http_listener" {
   protocol          = "HTTP"
 
   default_action {
-    # type = "redirect"
-    type             = "forward"
+    type             = "redirect"
     target_group_arn = aws_alb_target_group.service_target_group.arn
 
-    # redirect {
-    #   port        = "443"
-    #   protocol    = "HTTPS"
-    #   status_code = "HTTP_301"
-    # }
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
   }
 }
 
@@ -54,14 +53,14 @@ resource "aws_alb_target_group" "service_target_group" {
   target_type = "ip"
   vpc_id      = var.vpc_id
 
-  # health_check {
-  #   path                = "/"
-  #   interval            = 30
-  #   timeout             = 5
-  #   healthy_threshold   = 2
-  #   unhealthy_threshold = 2
-  #   matcher             = "200"
-  # }
+  health_check {
+    path                = "/"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+    matcher             = "200"
+  }
 
   depends_on = [aws_alb.alb]
 }

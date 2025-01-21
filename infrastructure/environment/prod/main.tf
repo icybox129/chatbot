@@ -9,7 +9,7 @@ provider "cloudflare" {
 terraform {
   backend "s3" {
     bucket  = "terraform-state-20250109160836745100000001"
-    key     = "dev/terraform.tfstate"
+    key     = "prod/terraform.tfstate"
     region  = "eu-west-2"
     encrypt = true
   }

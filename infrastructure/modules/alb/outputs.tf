@@ -9,3 +9,7 @@ output "alb_dns_name" {
 output "alb_arn_suffix" {
   value = aws_alb.alb.arn_suffix
 }
+
+output "tg_arn_suffix" {
+  value = aws_alb_target_group.service_target_group.arn_suffix
+}

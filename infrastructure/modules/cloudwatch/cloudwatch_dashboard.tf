@@ -41,26 +41,30 @@ resource "aws_cloudwatch_dashboard" "dashboard" {
       {
         "type" : "metric",
         "x" : 0,
-        "y" : 6,
-        "width" : 24,
+        "y" : 18,
+        "width" : 12,
         "height" : 6,
         "properties" : {
           "metrics" : [
-            ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", var.alb_arn_suffix]
+            ["AWS/ApplicationELB", "RequestCount", "TargetGroup", var.tg_arn_suffix, "AvailabilityZone", "eu-west-2b", "LoadBalancer", var.alb_arn_suffix, { "region" : "eu-west-2" }]
           ],
-          "view" : "timeSeries",
-          "stacked" : false,
-          "region" : var.aws_region,
-          "stat" : "Sum",
-          "title" : "ALB Request Count",
-          "period" : 60
+          "view" : "gauge",
+          "region" : "eu-west-2",
+          "yAxis" : {
+            "left" : {
+              "min" : 0,
+              "max" : 100
+            }
+          },
+          "period" : 300,
+          "stat" : "Sum"
         }
       },
       # ALB 4XX Errors
       {
         "type" : "metric",
-        "x" : 0,
-        "y" : 12,
+        "x" : 12,
+        "y" : 6,
         "width" : 12,
         "height" : 6,
         "properties" : {
@@ -78,7 +82,7 @@ resource "aws_cloudwatch_dashboard" "dashboard" {
       # ALB 5XX Errors
       {
         "type" : "metric",
-        "x" : 12,
+        "x" : 0,
         "y" : 12,
         "width" : 12,
         "height" : 6,
@@ -97,9 +101,9 @@ resource "aws_cloudwatch_dashboard" "dashboard" {
       # ALB Target Response Time
       {
         "type" : "metric",
-        "x" : 0,
-        "y" : 18,
-        "width" : 24,
+        "x" : 12,
+        "y" : 12,
+        "width" : 12,
         "height" : 6,
         "properties" : {
           "metrics" : [

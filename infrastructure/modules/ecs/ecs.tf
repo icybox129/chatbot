@@ -299,25 +299,26 @@ resource "aws_ecs_task_definition" "efs_sync_task" {
 
   container_definitions = jsonencode([
     {
-      "name" : "efs-sync",
-      "image" : "amazon/aws-cli:latest",
-      "essential" : true,
-      "entryPoint" : ["sh", "-c"],
-      "command" : [
-        "cd / && echo 'Syncing S3 to EFS...' && aws s3 sync s3://nick-terraform-test-docs/data/chroma /app/data/chroma && echo 'S3 -> EFS Sync completed.'"
-      ],
-      "logConfiguration" : {
-        "logDriver" : "awslogs",
-        "options" : {
-          "awslogs-group" : "${var.log_group_name}",
-          "awslogs-region" : "eu-west-2",
-          "awslogs-stream-prefix" : "${var.naming_prefix}-efs-sync"
+      name       = "efs-sync"
+      image      = "amazon/aws-cli:latest"
+      essential  = true
+      entryPoint = ["sh", "-c"]
+      command = [
+        # All on one line
+        "echo 'Removing old data from EFS...' && rm -rf /app/data/chroma/* /app/data/chroma/.[!.]* /app/data/chroma/..?* && echo 'Removed old data. Now syncing from S3...' && aws s3 sync s3://nick-terraform-test-docs/data/chroma /app/data/chroma && echo 'S3 -> EFS Sync completed.'"
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = "${var.log_group_name}"
+          awslogs-region        = "eu-west-2"
+          awslogs-stream-prefix = "${var.naming_prefix}-efs-sync"
         }
-      },
-      "mountPoints" : [
+      }
+      mountPoints = [
         {
-          "sourceVolume" : "chroma-efs-volume",
-          "containerPath" : "/app/data/chroma"
+          sourceVolume  = "chroma-efs-volume"
+          containerPath = "/app/data/chroma"
         }
       ]
     }
@@ -339,11 +340,11 @@ resource "null_resource" "run_efs_sync_task" {
 }
 
 data "aws_ecr_image" "backend" {
-  repository_name = "chatbot-dev"
+  repository_name = lower(var.naming_prefix)
   image_tag       = "backend-latest"
 }
 
 data "aws_ecr_image" "frontend" {
-  repository_name = "chatbot-dev"
+  repository_name = lower(var.naming_prefix)
   image_tag       = "frontend-latest"
 }
