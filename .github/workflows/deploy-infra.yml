@@ -167,7 +167,7 @@ jobs:
         run: |
           echo "DEBUG: Building with tag=$TAG and ECR=$ECR_REPO_URL"
           docker build \
-            -t ${{ env.ENV_SUFFIX }}-chatbot:backend-${{ env.TAG }} \ 
+            -t ${{ env.ENV_SUFFIX }}-chatbot:backend-${{ env.TAG }} \
             -f Dockerfile.backend .
 
           # Tag with "latest" so ECS references keep working
