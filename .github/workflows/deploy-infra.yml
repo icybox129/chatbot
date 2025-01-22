@@ -167,42 +167,42 @@ jobs:
         run: |
           echo "DEBUG: Building with tag=$TAG and ECR=$ECR_REPO_URL"
           docker build \
-            -t $ENV_SUFFIX-chatbot:backend-$TAG \
+            -t ${{ env.ENV_SUFFIX }}-chatbot:backend-${{ env.TAG }} \ 
             -f Dockerfile.backend .
 
           # Tag with "latest" so ECS references keep working
           docker tag \
-            $ENV_SUFFIX-chatbot:backend-$TAG \
-            $ECR_REPO_URL:backend-latest
+            ${{ env.ENV_SUFFIX }}-chatbot:backend-${{ env.TAG }} \
+            ${{ env.ECR_REPO_URL}}:backend-latest 
 
           # Also tag with the commit SHA
           docker tag \
-            $ENV_SUFFIX-chatbot:backend-$TAG \
-            $ECR_REPO_URL:backend-$TAG
+            ${{ env.ENV_SUFFIX }}-chatbot:backend-${{ env.TAG }} \
+            ${{ env.ECR_REPO_URL}}:backend-${{ env.TAG }}
 
       - name: Push Backend Image
         run: |
-          docker push $ECR_REPO_URL:backend-latest
-          docker push $ECR_REPO_URL:backend-$TAG
+          docker push ${{ env.ECR_REPO_URL}}:backend-latest
+          docker push ${{ env.ECR_REPO_URL}}:backend-${{ env.TAG }}
 
       - name: Build Frontend Image
         run: |
           docker build \
-            -t $ENV_SUFFIX-chatbot:frontend-$TAG \
+            -t ${{ env.ENV_SUFFIX }}-chatbot:frontend-${{ env.TAG }} \
             -f Dockerfile.frontend .
 
           docker tag \
-            $ENV_SUFFIX-chatbot:frontend-$TAG \
-            $ECR_REPO_URL:frontend-latest
+            ${{ env.ENV_SUFFIX }}-chatbot:frontend-${{ env.TAG }} \
+            ${{ env.ECR_REPO_URL}}:frontend-latest
 
           docker tag \
-            $ENV_SUFFIX-chatbot:frontend-$TAG \
-            $ECR_REPO_URL:frontend-$TAG
+            ${{ env.ENV_SUFFIX }}-chatbot:frontend-${{ env.TAG }} \
+            ${{ env.ECR_REPO_URL}}:frontend-${{ env.TAG }}
 
       - name: Push Frontend Image
         run: |
-          docker push $ECR_REPO_URL:frontend-latest
-          docker push $ECR_REPO_URL:frontend-$TAG
+          docker push ${{ env.ECR_REPO_URL}}:frontend-latest
+          docker push ${{ env.ECR_REPO_URL}}:frontend-${{ env.TAG }}
 
   # ------------------------------------------------------------------------
   # 5) Deploy Remaining Infrastructure
