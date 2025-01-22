@@ -16,6 +16,7 @@ Dependencies:
 """
 
 import os
+import re
 import logging
 import tiktoken
 from typing import List, Dict, Any
@@ -49,15 +50,7 @@ CHROMA_PATH = os.path.join(BASE_DIR, "data/chroma")
 # Helper Functions
 # ─────────────────────────────────────────────────────────────────────────────
 def get_source_from_metadata(metadata: Dict[str, str]) -> str:
-    """
-    Extract a human-readable source string from metadata.
-
-    Args:
-        metadata (Dict[str, str]): Metadata dictionary containing keys like 'page_title' and 'subcategory'.
-
-    Returns:
-        str: Formatted source string.
-    """
+    """Extract a human-readable source string from metadata."""
     page_title = metadata.get('page_title', '').strip()
     subcategory = metadata.get('subcategory', '').strip()
 
@@ -69,19 +62,8 @@ def get_source_from_metadata(metadata: Dict[str, str]) -> str:
         return subcategory
     return "unknown source"
 
-def truncate_history(messages: List[Dict[str, Any]], max_tokens: int = 3000, model_name: str = 'gpt-4o-mini', reserved_tokens: int = 500) -> List[Dict[str, Any]]:
-    """
-    Truncate the conversation history to fit within a token limit.
-
-    Args:
-        messages (List[Dict[str, Any]]): List of conversation messages.
-        max_tokens (int): Maximum allowable tokens including reserved tokens.
-        model_name (str): Model name for token encoding.
-        reserved_tokens (int): Tokens reserved for the current response.
-
-    Returns:
-        List[Dict[str, Any]]: Truncated conversation history.
-    """
+def truncate_history(messages: List[Dict[str, Any]], max_tokens: int = 3000, model_name: str = 'gpt-3.5-turbo', reserved_tokens: int = 500) -> List[Dict[str, Any]]:
+    """Truncate the conversation history to fit within a token limit."""
     encoding = tiktoken.encoding_for_model(model_name)
     total_tokens = reserved_tokens
     truncated_messages = []
@@ -102,13 +84,6 @@ def truncate_history(messages: List[Dict[str, Any]], max_tokens: int = 3000, mod
 def main(query_text: str, history: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     Main function to handle user query processing and provide a response.
-
-    Args:
-        query_text (str): User query.
-        history (List[Dict[str, Any]]): Conversation history.
-
-    Returns:
-        Dict[str, Any]: Response containing AI output and sources.
     """
     if not os.path.exists(CHROMA_PATH):
         error_message = "Error: The knowledge base is missing. Please contact support."
@@ -138,16 +113,18 @@ def main(query_text: str, history: List[Dict[str, Any]]) -> Dict[str, Any]:
         logging.info(f"Context constructed with {len(sources)} sources.")
 
         # Construct the system message
-        system_message = SystemMessage(content=(
-            "You are a specialized assistant that helps developers create and troubleshoot Terraform configuration files.\n\n"
-            "Instructions:\n"
-            "- Use **only** the following provided context to answer the user's question.\n"
-            "- If the answer is not contained within the context, politely inform the user that you cannot assist.\n"
-            "- Provide clear and concise explanations in markdown format.\n"
-            "- Use bullet points for lists and triple backticks for code blocks with 'hcl' as the language.\n"
-            "- Reference the sources in your response when applicable.\n"
-            f"{context_text}\n\n"
-        ))
+        system_message = SystemMessage(content=(f"""
+            You are a specialized assistant that helps developers create and troubleshoot Terraform configuration files.
+
+            Instructions:
+            - Use **only** the following provided context to answer the user's question.
+            - If the answer is not contained within the context, politely inform the user that you cannot assist.
+            - Provide clear and concise explanations in markdown format.
+            - Use bullet points for lists and triple backticks for code blocks with 'hcl' as the language.
+            - Reference the sources in your response when applicable.
+
+            {context_text}
+        """))
 
         # Prepare conversation messages
         messages = [system_message]
@@ -172,10 +149,16 @@ def main(query_text: str, history: List[Dict[str, Any]]) -> Dict[str, Any]:
         response = model.invoke(messages)
         response_text = response.content.strip()
 
-        if sources and "Sources:" not in response_text:
-            response_text += "\n\nSources:\n" + "\n".join(f"- {source}" for source in sources)
+        # Prepare a structured response with both the formatted response and sources
+        response_data = {
+            "response": response_text,  # The bot's response
+            "sources": sorted(list(sources))  # Ensure sources are deduplicated and sorted
+        }
 
-        return {"response": response_text, "sources": sources}
+        # Log the structured response
+        logging.info(f"Response data being returned: {response_data}")
+
+        return response_data  # Return the response as a dictionary
 
     except Exception as e:
         logging.error(f"An error occurred: {e}", exc_info=True)
