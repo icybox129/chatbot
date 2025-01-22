@@ -171,7 +171,7 @@ class MarkdownSplitter(TextSplitter):
                 chunks.append(part.strip())  # Keep code block intact
             else:
                 current_chunk += part
-                if len(current_chunk) > self._chunk_size:  # Access inherited chunk size
+                if len(current_chunk) > self._chunk_size:
                     chunks.append(current_chunk.strip())
                     current_chunk = ""
 
