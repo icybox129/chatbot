@@ -6,7 +6,7 @@ on:
     branches: [ main ]
 
 permissions:
-  actions: write  # Required if you're updating repository variables elsewhere
+  actions: write  # Required if you were updating repo variables (no longer used here)
   contents: read
 
 jobs:
@@ -63,7 +63,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       # ------------------ Node.js Dependencies Scan ------------------ #
       - name: Install Node.js Dependencies for Snyk
@@ -81,24 +81,18 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           args: --severity-threshold=high
-        continue-on-error: false  # or true if you want to ignore high severity issues
+        continue-on-error: false  # Set to true if you want to ignore high severity issues
 
   # ------------------------------------------------------------------------
   # 3) Deploy Infrastructure (ECR and ACM)
-  #    - Capture the ECR Repo URL as a job output
   # ------------------------------------------------------------------------
   deploy-infrastructure:
     name: Deploy ECR & ACM
     needs: snyk-scan
     runs-on: ubuntu-latest
-
-    # Dynamically set ENV_SUFFIX based on branch
     env:
+      # Dynamically set ENV_SUFFIX based on branch
       ENV_SUFFIX: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
-
-    # Declare job outputs here
-    outputs:
-      ecr_repo_url: ${{ steps.retrieve_ecr.outputs.ecr_repo_url }}
 
     steps:
       - name: Checkout
@@ -137,34 +131,17 @@ jobs:
           TF_VAR_openai_api_key: ${{ secrets.OPENAI_API_KEY }}
         run: terraform apply -auto-approve -target=module.ecr.aws_ecr_repository.ecr -target=module.acm.aws_acm_certificate.chatbot_cert
 
-      - name: Retrieve ECR Repo URL
-        id: retrieve_ecr
-        working-directory: infrastructure/environment/${{ env.ENV_SUFFIX }}
-        run: |
-          set -e
-          ecr_repo_url=$(terraform output -raw ecr_repository_url || echo "")
-          if [ -z "$ecr_repo_url" ]; then
-            echo "::error::ECR Repository URL is empty or null"
-            exit 1
-          fi
-
-          # Store it as a step output:
-          echo "ecr_repo_url=$ecr_repo_url" >> $GITHUB_OUTPUT
-
-      - name: Debug ECR Repo URL
-        run: |
-          echo "DEBUG: ECR_REPO_URL from Terraform: ${{ steps.retrieve_ecr.outputs.ecr_repo_url }}"
-
   # ------------------------------------------------------------------------
   # 4) Build & Push Docker Images
-  #    - Use the ECR Repo URL from the previous job via 'needs'
   # ------------------------------------------------------------------------
   build-and-push:
     name: Build & Push Docker Images
     needs: deploy-infrastructure
     runs-on: ubuntu-latest
     env:
+      # Hard-code the ECR URL based on branch
       ENV_SUFFIX: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
+      ECR_REPO_URL: ${{ github.ref_name == 'main' && '346596735478.dkr.ecr.eu-west-2.amazonaws.com/chatbot-prod' || '346596735478.dkr.ecr.eu-west-2.amazonaws.com/chatbot-dev' }}
 
     steps:
       - name: Checkout
@@ -184,46 +161,48 @@ jobs:
       - name: Docker Login to ECR
         run: |
           aws ecr get-login-password --region eu-west-2 \
-            | docker login --username AWS --password-stdin \
-              ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}
+            | docker login --username AWS --password-stdin $ECR_REPO_URL
 
       - name: Build Backend Image
         run: |
+          echo "DEBUG: Building with tag=$TAG and ECR=$ECR_REPO_URL"
           docker build \
-            -t ${{ env.ENV_SUFFIX }}-chatbot:backend-${{ env.TAG }} \
+            -t $ENV_SUFFIX-chatbot:backend-$TAG \
             -f Dockerfile.backend .
 
+          # Tag with "latest" so ECS references keep working
           docker tag \
-            ${{ env.ENV_SUFFIX }}-chatbot:backend-${{ env.TAG }} \
-            ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}:backend-latest
+            $ENV_SUFFIX-chatbot:backend-$TAG \
+            $ECR_REPO_URL:backend-latest
 
+          # Also tag with the commit SHA
           docker tag \
-            ${{ env.ENV_SUFFIX }}-chatbot:backend-${{ env.TAG }} \
-            ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}:backend-${{ env.TAG }}
+            $ENV_SUFFIX-chatbot:backend-$TAG \
+            $ECR_REPO_URL:backend-$TAG
 
       - name: Push Backend Image
         run: |
-          docker push ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}:backend-latest
-          docker push ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}:backend-${{ env.TAG }}
+          docker push $ECR_REPO_URL:backend-latest
+          docker push $ECR_REPO_URL:backend-$TAG
 
       - name: Build Frontend Image
         run: |
           docker build \
-            -t ${{ env.ENV_SUFFIX }}-chatbot:frontend-${{ env.TAG }} \
+            -t $ENV_SUFFIX-chatbot:frontend-$TAG \
             -f Dockerfile.frontend .
 
           docker tag \
-            ${{ env.ENV_SUFFIX }}-chatbot:frontend-${{ env.TAG }} \
-            ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}:frontend-latest
+            $ENV_SUFFIX-chatbot:frontend-$TAG \
+            $ECR_REPO_URL:frontend-latest
 
           docker tag \
-            ${{ env.ENV_SUFFIX }}-chatbot:frontend-${{ env.TAG }} \
-            ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}:frontend-${{ env.TAG }}
+            $ENV_SUFFIX-chatbot:frontend-$TAG \
+            $ECR_REPO_URL:frontend-$TAG
 
       - name: Push Frontend Image
         run: |
-          docker push ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}:frontend-latest
-          docker push ${{ needs.deploy-infrastructure.outputs.ecr_repo_url }}:frontend-${{ env.TAG }}
+          docker push $ECR_REPO_URL:frontend-latest
+          docker push $ECR_REPO_URL:frontend-$TAG
 
   # ------------------------------------------------------------------------
   # 5) Deploy Remaining Infrastructure
