@@ -1,3 +1,42 @@
+"""
+Preprocessing Module for ChromaDB Knowledge Base
+
+This module processes markdown documents to create a searchable ChromaDB knowledge base.
+It supports two modes of operation:
+1. Local mode: Processes documents from the local filesystem and stores the ChromaDB locally.
+2. S3 mode: Downloads documents from an S3 bucket, processes them, and uploads the resulting
+   ChromaDB back to S3.
+
+Key features:
+- Downloads and uploads documents to/from S3.
+- Splits documents into chunks using custom markdown splitting logic.
+- Extracts metadata from YAML frontmatter.
+- Supports saving ChromaDB locally or to S3.
+
+Classes:
+- MarkdownSplitter: Custom splitter for markdown documents, preserving code blocks and headings.
+
+Functions:
+- download_s3_folder: Downloads a folder from S3 to a local directory.
+- upload_folder_to_s3: Uploads a local folder to S3 under a specified prefix.
+- extract_metadata: Extracts metadata from YAML frontmatter in markdown files.
+- load_documents_from_local: Loads markdown documents from the local filesystem.
+- load_documents_from_s3: Downloads and loads markdown documents from S3.
+- split_text: Splits loaded documents into smaller chunks for vectorization.
+- save_to_chroma_local: Saves the ChromaDB locally.
+- save_to_chroma_s3: Saves the ChromaDB to S3.
+- main: Entry point to preprocess documents, supporting both local and S3 modes.
+
+Dependencies:
+- Boto3 for S3 interactions.
+- LangChain for document and embedding management.
+- OpenAI API for embeddings.
+- PyYAML for metadata extraction.
+
+Environment variables:
+- OPENAI_API_KEY: Required for generating embeddings.
+"""
+
 import os
 import shutil
 import re
@@ -132,7 +171,7 @@ class MarkdownSplitter(TextSplitter):
                 chunks.append(part.strip())  # Keep code block intact
             else:
                 current_chunk += part
-                if len(current_chunk) > self._chunk_size:  # Access inherited chunk size
+                if len(current_chunk) > self._chunk_size:
                     chunks.append(current_chunk.strip())
                     current_chunk = ""
 
@@ -278,7 +317,6 @@ def empty_s3_prefix(bucket_name: str, prefix: str):
     """
     Deletes all objects under the given S3 prefix.
     """
-    # list_objects_v2 returns up to 1000 objects per call, so we may need a loop
     continuation_token = None
     while True:
         if continuation_token:
@@ -293,7 +331,6 @@ def empty_s3_prefix(bucket_name: str, prefix: str):
                 Prefix=prefix
             )
 
-        # If there are no contents, break out of loop
         if 'Contents' not in response:
             break
 
@@ -303,7 +340,6 @@ def empty_s3_prefix(bucket_name: str, prefix: str):
             Delete={'Objects': objects_to_delete}
         )
 
-        # If there's more to list, keep going; otherwise, break
         if response.get('NextContinuationToken'):
             continuation_token = response['NextContinuationToken']
         else:
