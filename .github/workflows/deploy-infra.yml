@@ -6,7 +6,7 @@ on:
     branches: [ main ]
 
 permissions:
-  actions: write  # Required if you were updating repo variables (no longer used here)
+  actions: write
   contents: read
 
 jobs:
@@ -81,7 +81,7 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           args: --severity-threshold=high
-        continue-on-error: false  # Set to true if you want to ignore high severity issues
+        continue-on-error: false  # Set to true to ignore high severity issues
 
   # ------------------------------------------------------------------------
   # 3) Deploy Infrastructure (ECR and ACM)

@@ -63,7 +63,7 @@ def test_split_text():
     for chunk in chunks:
         assert hasattr(chunk, 'page_content'), "Chunk should have 'page_content' attribute."
         assert isinstance(chunk.page_content, str), "'page_content' should be a string."
-        # Optionally, check that code blocks are intact
+
         if "```python" in chunk.page_content:
             assert chunk.page_content.count("```python") == 1, "Code blocks should remain intact."
 
@@ -83,7 +83,6 @@ def test_load_documents_from_s3(setup_test_data, moto_s3):
             assert isinstance(doc.metadata, dict), "'metadata' should be a dictionary."
 
 def test_extract_metadata():
-    """Optional: Test the extract_metadata function if it's exposed."""
     from preprocessing.preprocessing import extract_metadata
     
     content_with_frontmatter = (

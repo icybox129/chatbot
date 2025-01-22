@@ -40,11 +40,6 @@ describe('main.js functions', () => {
       },
     });
 
-    // Mock DOMPurify
-    // global.DOMPurify = {
-    //   sanitize: jest.fn((input) => input),
-    // };
-
     // Import the module and extract functions
     const main = require('../frontend/static/main.js');
     handleEnter = main.handleEnter;
@@ -91,7 +86,7 @@ describe('main.js functions', () => {
     // Verify bot message is added to chat window
     const botMessages = chatWindow.querySelectorAll('.message.bot-message');
     expect(botMessages.length).toBe(1);
-    expect(botMessages[0].innerHTML).toContain('Typing...'); // Depending on how the response is rendered
+    expect(botMessages[0].innerHTML).toContain('Typing...');
   });
   
   test('renderResponse() returns formatted HTML with text and sources', () => {
@@ -108,15 +103,6 @@ describe('main.js functions', () => {
     expect(result).toContain('<li>Source 2</li>');
   });
   
-  // test('renderResponse() returns formatted HTML with text only when no sources provided', () => {
-  //   const text = 'Plain text without sources.';
-  
-  //   const result = renderResponse(text);
-  
-  //   expect(result).toContain('<p>Plain text without sources.</p>');
-  //   expect(result).not.toContain('Sources:');
-  // });
-
   test('renderResponse() sanitizes malicious input', () => {
     const text = '<script>alert("XSS")</script>';
   
@@ -299,7 +285,7 @@ describe('main.js functions', () => {
     // Await the promise to ensure all asynchronous operations complete
     await sendPromise;
   
-    // Now make your assertions
+    // Input should be re-enabled after fetch completes
     expect(userInput.disabled).toBe(false);
     expect(document.activeElement).toBe(userInput);
   });
