@@ -278,7 +278,6 @@ def empty_s3_prefix(bucket_name: str, prefix: str):
     """
     Deletes all objects under the given S3 prefix.
     """
-    # list_objects_v2 returns up to 1000 objects per call, so we may need a loop
     continuation_token = None
     while True:
         if continuation_token:
@@ -293,7 +292,6 @@ def empty_s3_prefix(bucket_name: str, prefix: str):
                 Prefix=prefix
             )
 
-        # If there are no contents, break out of loop
         if 'Contents' not in response:
             break
 
@@ -303,7 +301,6 @@ def empty_s3_prefix(bucket_name: str, prefix: str):
             Delete={'Objects': objects_to_delete}
         )
 
-        # If there's more to list, keep going; otherwise, break
         if response.get('NextContinuationToken'):
             continuation_token = response['NextContinuationToken']
         else:
