@@ -1,12 +1,38 @@
+"""
+Flask Application for the Chatbot
+==================================
+
+This application serves as the backend for the AI chatbot. It handles user 
+queries, manages session history, and communicates with the query processing module.
+
+Routes:
+- `/`: Serves the home page.
+- `/api/query`: Processes user queries and returns responses.
+- `/new_conversation`: Resets the conversation history.
+
+Dependencies:
+- Flask
+- Flask-Session
+- Cachelib
+"""
+
+import os
 from flask import Flask, request, jsonify, render_template, session
 from flask_session import Session
-from backend.query_data import main
 from cachelib.file import FileSystemCache
-import os
+from backend.query_data import main
 
-app = Flask(__name__, template_folder="frontend/templates", static_folder="frontend/static")
+# ─────────────────────────────────────────────────────────────────────────────
+# Flask Application Setup
+# ─────────────────────────────────────────────────────────────────────────────
 
-# Session handling using cachelib
+app = Flask(
+    __name__,
+    template_folder="frontend/templates",
+    static_folder="frontend/static"
+)
+
+# Session configuration using cachelib
 session_cache = FileSystemCache(
     cache_dir="./.flask_session/",
     threshold=100,
@@ -22,39 +48,70 @@ app.config.update(
 
 Session(app)
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Routes
+# ─────────────────────────────────────────────────────────────────────────────
+
 @app.route('/')
 def home():
+    """
+    Home Page Route
+    Serves the main HTML template.
+    """
     return render_template('index.html')
 
 @app.route('/api/query', methods=['POST'])
 def handle_query():
+    """
+    API Route: Handle User Query
+    Receives a query from the user, processes it using the backend logic,
+    and returns the AI-generated response.
+
+    Request Body:
+    - `query` (str): The user's query text.
+
+    Response:
+    - JSON containing the bot's response and sources.
+    """
     data = request.get_json()
     query_text = data.get('query', '').strip()
+
     if not query_text:
         return jsonify({'error': 'Invalid input'}), 400
 
-    # Retrieve the conversation history from session or initialise it
+    # Retrieve or initialize conversation history from session
     history = session.get('history', [])
 
-    # Append the new user query to the history
+    # Append user query to history
     history.append({"role": "user", "content": query_text})
 
-    # Call the main function with the updated history
+    # Process the query and get the bot's response
     response_data = main(query_text, history)
 
-    # Append the bot's response to the history
+    # Append the bot's response to history
     history.append({"role": "assistant", "content": response_data["response"]})
 
-    # Save the updated history back to the session
+    # Save updated history back to the session
     session['history'] = history
 
-    # Return the structured response to the frontend
+    # Return the bot's response
     return jsonify(response_data)
 
 @app.route('/new_conversation', methods=['POST'])
 def new_conversation():
+    """
+    API Route: Start a New Conversation
+    Clears the conversation history stored in the session.
+
+    Response:
+    - JSON confirmation message.
+    """
     session.pop('history', None)
     return jsonify({"message": "New conversation started"})
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Main Entry Point
+# ─────────────────────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
     app.run(debug=True)
