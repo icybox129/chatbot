@@ -45,7 +45,7 @@ import openai
 import logging
 import boto3
 from langchain.schema import Document
-# from langchain_community.document_loaders import DirectoryLoader  # Commenting out local loader
+from langchain.document_loaders import DirectoryLoader
 from langchain.text_splitter import TextSplitter
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
@@ -221,26 +221,21 @@ def extract_metadata(content):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def load_documents_from_local():
-    """
-    ORIGINAL: Local approach using DirectoryLoader
-    """
-    from langchain_community.document_loaders import DirectoryLoader
+    from langchain.document_loaders import DirectoryLoader  # <= official loader
     try:
         loader = DirectoryLoader(DATA_PATH, glob=["*.md", "*.markdown"])
         raw_documents = loader.load()
         documents = []
 
+        # your custom YAML frontmatter logic
         for doc in raw_documents:
             metadata, content = extract_metadata(doc.page_content)
             documents.append(Document(page_content=content, metadata=metadata))
 
-        num_loaded = len(documents)
-        logging.info(f"Loaded {num_loaded} documents from {DATA_PATH}")
         return documents
     except Exception as e:
         logging.error(f"Error loading documents: {e}")
         return []
-
 
 def load_documents_from_s3():
     from langchain_community.document_loaders import DirectoryLoader
