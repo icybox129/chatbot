@@ -24,19 +24,24 @@ def setup_test_data():
     test_data_dir = Path("./tests/test_data")
     test_data_dir.mkdir(parents=True, exist_ok=True)
     
-    # Create sample markdown files
-    (test_data_dir / "sample1.md").write_text("# Sample Document 1\n\nThis is the first test document.")
-    (test_data_dir / "sample2.md").write_text("# Sample Document 2\n\nThis is the second test document.")
+    sample1_path = test_data_dir / "sample1.md"
+    sample2_path = test_data_dir / "sample2.md"
+
+    sample1_path.write_text("# Sample Document 1\n\nThis is the first test document.")
+    sample2_path.write_text("# Sample Document 2\n\nThis is the second test document.")
+
+    # Debugging output
+    print(f"DEBUG: Checking test files - {sample1_path.exists()}, {sample2_path.exists()}")
     
     yield test_data_dir
     
-    # Teardown: remove test data directory after tests
+    # Teardown
     shutil.rmtree(test_data_dir)
 
 def test_load_documents_from_local(setup_test_data):
     """Test that documents are loaded successfully from a local directory."""
     # Mock DATA_PATH in preprocessing.py
-    with mock.patch("preprocessing.preprocessing.DATA_PATH", str(setup_test_data)):
+    with mock.patch("preprocessing.DATA_PATH", str(setup_test_data)):
         documents = load_documents_from_local()
         
         assert len(documents) == 2, "Should load exactly 2 documents from local directory."
