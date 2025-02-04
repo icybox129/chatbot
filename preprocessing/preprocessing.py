@@ -45,7 +45,7 @@ import openai
 import logging
 import boto3
 from langchain.schema import Document
-from langchain.document_loaders import DirectoryLoader
+from langchain_community.document_loaders import DirectoryLoader
 from langchain.text_splitter import TextSplitter
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
@@ -221,13 +221,13 @@ def extract_metadata(content):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def load_documents_from_local():
-    from langchain.document_loaders import DirectoryLoader  # <= official loader
+    from langchain_community.document_loaders import DirectoryLoader
     try:
         loader = DirectoryLoader(DATA_PATH, glob=["*.md", "*.markdown"])
         raw_documents = loader.load()
         documents = []
 
-        # your custom YAML frontmatter logic
+        # Process without embeddings for testing
         for doc in raw_documents:
             metadata, content = extract_metadata(doc.page_content)
             documents.append(Document(page_content=content, metadata=metadata))
