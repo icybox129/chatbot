@@ -41,7 +41,7 @@ def setup_test_data():
 def test_load_documents_from_local(setup_test_data):
     """Test that documents are loaded successfully from a local directory."""
     # Mock DATA_PATH in preprocessing.py
-    with mock.patch("preprocessing.DATA_PATH", str(setup_test_data)):
+    with mock.patch("preprocessing.preprocessing.DATA_PATH", str(setup_test_data)):
         documents = load_documents_from_local()
         
         assert len(documents) == 2, "Should load exactly 2 documents from local directory."
