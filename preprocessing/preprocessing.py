@@ -45,7 +45,7 @@ import openai
 import logging
 import boto3
 from langchain.schema import Document
-from langchain_community.document_loaders import DirectoryLoader
+from langchain.document_loaders import DirectoryLoader, TextLoader
 from langchain.text_splitter import TextSplitter
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
@@ -221,55 +221,57 @@ def extract_metadata(content):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def load_documents_from_local():
-    from langchain_community.document_loaders import DirectoryLoader
+    from langchain.document_loaders import DirectoryLoader, TextLoader
     try:
-        loader = DirectoryLoader(DATA_PATH, glob=["*.md", "*.markdown"])
+        loader = DirectoryLoader(
+            DATA_PATH,
+            glob=["*.md", "*.markdown"],
+            loader_cls=TextLoader   # <-- Force local text loading
+        )
         raw_documents = loader.load()
-        documents = []
 
-        # Process without embeddings for testing
+        documents = []
         for doc in raw_documents:
             metadata, content = extract_metadata(doc.page_content)
             documents.append(Document(page_content=content, metadata=metadata))
-
         return documents
     except Exception as e:
         logging.error(f"Error loading documents: {e}")
         return []
 
 def load_documents_from_s3():
-    from langchain_community.document_loaders import DirectoryLoader
-    
+    from langchain.document_loaders import DirectoryLoader, TextLoader
+
     temp_dir = Path("temp_s3_raw")
     if temp_dir.exists():
         shutil.rmtree(temp_dir)
     temp_dir.mkdir(parents=True, exist_ok=True)
 
     try:
-        # Download from S3
+        # 1) Download from S3
         download_s3_folder(S3_BUCKET_NAME, S3_RAW_PREFIX, str(temp_dir))
 
-        # Load documents with DirectoryLoader
-        loader = DirectoryLoader(str(temp_dir), glob=["*.md", "*.markdown"])
+        # 2) Load documents locally, as text
+        loader = DirectoryLoader(
+            str(temp_dir),
+            glob=["*.md", "*.markdown"],
+            loader_cls=TextLoader
+        )
         raw_documents = loader.load()
+
         documents = []
         for doc in raw_documents:
             metadata, content = extract_metadata(doc.page_content)
             documents.append(Document(page_content=content, metadata=metadata))
-        
-        num_loaded = len(documents)
-        logging.info(f"Loaded {num_loaded} documents from S3 prefix: {S3_RAW_PREFIX}")
-        return documents
 
+        return documents
     except Exception as e:
         logging.error(f"Error loading documents from S3: {e}")
         return []
-
     finally:
-        # Cleanup: remove temp_s3_raw (only if it exists)
+        # Cleanup temp files
         if temp_dir.exists():
             shutil.rmtree(temp_dir)
-            logging.info("Removed temporary directory for S3 raw documents.")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
