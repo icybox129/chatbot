@@ -15,7 +15,7 @@ jobs:
   # ------------------------------------------------------------------------
   run-tests:
     name: Run Unit Tests
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -60,7 +60,7 @@ jobs:
   snyk-scan:
     name: Snyk Scan
     needs: run-tests
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -89,7 +89,7 @@ jobs:
   deploy-infrastructure:
     name: Deploy ECR & ACM
     needs: snyk-scan
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     env:
       # Dynamically set ENV_SUFFIX based on branch
       ENV_SUFFIX: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
@@ -137,7 +137,7 @@ jobs:
   build-and-push:
     name: Build & Push Docker Images
     needs: deploy-infrastructure
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     env:
       # Hard-code the ECR URL based on branch
       ENV_SUFFIX: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
@@ -210,7 +210,7 @@ jobs:
   deploy-remaining:
     name: Deploy Remaining Infrastructure
     needs: build-and-push
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     env:
       ENV_SUFFIX: ${{ github.ref_name == 'main' && 'prod' || 'dev' }}
 
