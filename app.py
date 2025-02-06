@@ -32,11 +32,12 @@ app = Flask(
     static_folder="frontend/static"
 )
 
-# Session configuration using cachelib
+# Session configuration using cachelib. This stores the session data in a
+# local file system cache rather than in-memory.
 session_cache = FileSystemCache(
     cache_dir="./.flask_session/",
-    threshold=100,
-    mode=0o600
+    threshold=100, # Maximum number of items before pruning
+    mode=0o600 # File permissions: read/write for owner only
 )
 
 app.config.update(
@@ -76,6 +77,7 @@ def handle_query():
     data = request.get_json()
     query_text = data.get('query', '').strip()
 
+    # Validate the input; if no query text is provided, return an error
     if not query_text:
         return jsonify({'error': 'Invalid input'}), 400
 
@@ -106,6 +108,7 @@ def new_conversation():
     Response:
     - JSON confirmation message.
     """
+    # Remove the 'history' key from the session if it exists
     session.pop('history', None)
     return jsonify({"message": "New conversation started"})
 
