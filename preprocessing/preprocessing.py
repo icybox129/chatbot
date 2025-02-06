@@ -131,7 +131,9 @@ def upload_folder_to_s3(local_dir: str, bucket_name: str, s3_prefix: str):
     :param bucket_name: Name of the S3 bucket.
     :param s3_prefix: The folder path/prefix in S3 to which files will be uploaded.
     """
+    # Scans the local directory and all subdirectories
     for root, dirs, files in os.walk(local_dir):
+        # For every file, create a local path, a relative path, and an S3 key
         for file in files:
             local_path = os.path.join(root, file)
             relative_path = os.path.relpath(local_path, start=local_dir)
