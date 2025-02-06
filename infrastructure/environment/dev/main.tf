@@ -99,3 +99,12 @@ module "efs" {
   private_subnet_ids = module.network.private_subnet_ids
   efs_sg             = module.sg.efs_sg
 }
+
+# resource "aws_vpc_endpoint" "external_endpoint" {
+#   vpc_id       = "vpc-0942b29adbfd2012e"
+#   service_name = "com.amazonaws.eu-west-2.guardduty-data"
+# }
+
+# resource "aws_security_group" "endpoint_sg" {
+
+# }
