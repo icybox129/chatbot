@@ -1,4 +1,23 @@
-# tests/test_preprocessing.py
+"""
+Test Suite for preprocessing.py
+==============================
+Validates the functionality of the preprocessing module, which handles:
+- Loading markdown documents (from local or S3),
+- Splitting them into chunks,
+- Extracting YAML frontmatter metadata,
+- Saving them to a local Chroma database.
+
+Fixtures:
+- `setup_test_data`: Creates a local directory with sample markdown files for testing.
+- `moto_s3`: (imported from conftest.py) provides a mocked S3 environment.
+
+Tests:
+- test_load_documents_from_local: Checks local loading and metadata extraction.
+- test_split_text: Ensures document chunking works properly.
+- test_load_documents_from_s3: Ensures S3-based loading with mock is successful.
+- test_extract_metadata: Verifies YAML frontmatter is parsed correctly.
+- test_save_to_chroma_local: Tests local Chroma DB saving.
+"""
 
 import os
 import shutil
@@ -20,7 +39,11 @@ TEST_CHROMA_PREFIX = "data/chroma"
 
 @pytest.fixture(scope="module")
 def setup_test_data():
-    """Fixture to set up test data in the local filesystem."""
+    """
+    Fixture to set up test data in the local filesystem.
+    Creates a temporary directory with sample .md files, 
+    then removes it after tests complete.
+    """
     test_data_dir = Path("./tests/test_data")
     test_data_dir.mkdir(parents=True, exist_ok=True)
     
@@ -39,7 +62,11 @@ def setup_test_data():
     shutil.rmtree(test_data_dir)
 
 def test_load_documents_from_local(setup_test_data):
-    """Test that documents are loaded successfully from a local directory."""
+    """
+    Test: load_documents_from_local
+    Ensures that loading markdown files from a local directory 
+    returns a list of Document objects with valid content and metadata.
+    """
     # Mock DATA_PATH in preprocessing.py
     with mock.patch("preprocessing.preprocessing.DATA_PATH", str(setup_test_data)):
         documents = load_documents_from_local()
@@ -52,7 +79,11 @@ def test_load_documents_from_local(setup_test_data):
             assert isinstance(doc.metadata, dict), "'metadata' should be a dictionary."
 
 def test_split_text():
-    """Test that documents are split into chunks correctly."""
+    """
+    Test: split_text
+    Checks that a Document with Markdown headings and code blocks 
+    is split into multiple chunks while preserving code blocks.
+    """
     # Provide a Document object with realistic Markdown
     markdown_content = (
         "# Heading\n\n"
@@ -73,7 +104,11 @@ def test_split_text():
             assert chunk.page_content.count("```python") == 1, "Code blocks should remain intact."
 
 def test_load_documents_from_s3(setup_test_data, moto_s3):
-    """Test that documents are loaded successfully from S3."""
+    """
+    Test: load_documents_from_s3
+    Ensures that markdown files can be downloaded from mocked S3 
+    and correctly turned into Document objects.
+    """
     # Mock the constants in preprocessing.py
     with mock.patch("preprocessing.preprocessing.S3_BUCKET_NAME", TEST_BUCKET_NAME), \
          mock.patch("preprocessing.preprocessing.S3_RAW_PREFIX", TEST_RAW_PREFIX):
@@ -88,6 +123,11 @@ def test_load_documents_from_s3(setup_test_data, moto_s3):
             assert isinstance(doc.metadata, dict), "'metadata' should be a dictionary."
 
 def test_extract_metadata():
+    """
+    Test: extract_metadata
+    Verifies that YAML frontmatter is correctly parsed 
+    and removed from the document content.
+    """
     from preprocessing.preprocessing import extract_metadata
     
     content_with_frontmatter = (
@@ -104,7 +144,11 @@ def test_extract_metadata():
     assert content.startswith("# Heading"), "Content should start after frontmatter."
 
 def test_save_to_chroma_local(setup_test_data):
-    """Test saving chunks to the local Chroma database."""
+    """
+    Test: save_to_chroma_local
+    Checks that chunks can be saved to a local Chroma database, 
+    and that the database folder is created with files.
+    """
     from preprocessing.preprocessing import save_to_chroma_local
     
     # Mock DATA_PATH and CHROMA_PATH
