@@ -302,10 +302,9 @@ resource "aws_ecs_task_definition" "efs_sync_task" {
       name       = "efs-sync"
       image      = "amazon/aws-cli:latest"
       essential  = true
-      entryPoint = ["sh", "-c"]
-      command = [
-        # All on one line
-        "echo 'Removing old data from EFS...' && rm -rf /app/data/chroma/* /app/data/chroma/.[!.]* /app/data/chroma/..?* && echo 'Removed old data. Now syncing from S3...' && aws s3 sync s3://nick-terraform-test-docs/data/chroma /app/data/chroma && echo 'S3 -> EFS Sync completed.'"
+      entryPoint = ["/bin/sh", "-c"]
+      command    = [
+        "set -e; echo 'Removing old data from EFS...'; rm -rf /app/data/chroma/* /app/data/chroma/.[!.]* /app/data/chroma/..?*; echo 'Old data removed.'; echo 'Syncing from S3 to EFS...'; aws s3 sync s3://nick-terraform-test-docs/data/chroma /app/data/chroma --delete; echo 'S3 -> EFS Sync completed successfully.'"
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -324,6 +323,7 @@ resource "aws_ecs_task_definition" "efs_sync_task" {
     }
   ])
 }
+
 
 resource "null_resource" "run_efs_sync_task" {
   provisioner "local-exec" {
