@@ -9,7 +9,7 @@ resource "aws_cloudwatch_log_group" "log_group" {
 
 resource "aws_cloudwatch_event_rule" "efs_sync_schedule" {
   name                = "${var.naming_prefix}-efs-sync-schedule"
-  schedule_expression = "rate(1 hour)"
+  schedule_expression = "rate(30 minutes)"
 }
 
 resource "aws_cloudwatch_event_target" "efs_sync_schedule_target" {
