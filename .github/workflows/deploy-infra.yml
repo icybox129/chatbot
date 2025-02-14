@@ -1,9 +1,10 @@
 name: Deploy
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: # Allows manual triggering of the workflow from GitHub UI
   push:
-    branches: [ main ]
+    branches: [ main ] # Automatically run the workflow when code is pushed to the main branch
+
 
 permissions:
   actions: write
@@ -15,16 +16,16 @@ jobs:
   # ------------------------------------------------------------------------
   run-tests:
     name: Run Unit Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest # Specifies that the job should run on the latest Ubuntu environment
     steps:
-      - name: Checkout Code
+      - name: Checkout Code # Clones the repository so that subsequent steps can access the code
         uses: actions/checkout@v3
 
       # ------------------ Python Tests ------------------ #
-      - name: Set Up Python
+      - name: Set Up Python # Sets up the Python environment with the specified version
         uses: actions/setup-python@v4
         with:
-          python-version: 3.10.12
+          python-version: 3.10.12 # Python version to be used
 
       - name: Install Python Dependencies
         run: |
@@ -34,7 +35,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run Python Unit Tests
-        env:
+        env: # Environment variables required for running tests
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -59,7 +60,7 @@ jobs:
   # ------------------------------------------------------------------------
   snyk-scan:
     name: Snyk Scan
-    needs: run-tests
+    needs: run-tests # This job will only run if the 'run-tests' job succeeds
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -78,7 +79,7 @@ jobs:
       - name: Run Snyk Terraform IaC Scan
         uses: snyk/actions/iac@master
         env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }} # Snyk authentication token stored in GitHub Secrets
         with:
           args: --severity-threshold=high
         continue-on-error: false  # Set to true to ignore high severity issues
@@ -98,17 +99,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Configure AWS Credentials
+      - name: Configure AWS Credentials # Set up AWS credentials for Terraform and AWS CLI commands
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-west-2
 
-      - name: Set up Terraform
+      - name: Set up Terraform # Installs and configures Terraform CLI
         uses: hashicorp/setup-terraform@v2
         with:
-          terraform_version: 1.10.2
+          terraform_version: 1.10.2 # Terraform version to be used
           terraform_wrapper: false
 
       - name: Terraform Init
@@ -154,7 +155,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-west-2
 
-      - name: Create unique Docker tag
+      - name: Create unique Docker tag # Generate a unique Docker tag based on the commit SHA
         id: docker_tag
         run: echo "TAG=${GITHUB_SHA:0:7}" >> $GITHUB_ENV
 
